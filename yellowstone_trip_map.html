@@ -1428,7 +1428,7 @@
         }
 
         // Navigate button
-        html += `<button class="navigate-btn" onclick="openInMaps(${stop.coords[0]},${stop.coords[1]},'${stop.name.replace(/'/g, "\\'")}')">&#128205; Navigate in Apple/Google Maps</button>`;
+        html += `<button class="navigate-btn" onclick="openInMaps(${stop.coords[0]},${stop.coords[1]},'${stop.name.replace(/'/g, "\\'")}')">&#128205; Navigate in Google Maps</button>`;
 
         // Complete button
         const done = isCompleted(currentPlan, dayIdx, stopIdx);
