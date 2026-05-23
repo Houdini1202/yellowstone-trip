@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ipconfig getifaddr *)",
+      "Bash(lsof -ti:8080)",
+      "Bash(xargs kill -9)",
+      "Bash(python3 -m http.server 8080)",
+      "Bash(/usr/libexec/ApplicationFirewall/socketfilterfw *)",
+      "Bash(python3 -c ' *)",
+      "Bash(npx localtunnel *)",
+      "Bash(cat /tmp/lt_output.txt)",
+      "Bash(jobs -l)",
+      "Bash(pkill -f localtunnel)",
+      "Bash(npx --yes ngrok --version)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)",
+      "Bash(git push *)"
+    ]
+  }
+}
