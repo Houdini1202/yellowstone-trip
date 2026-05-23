@@ -1,0 +1,2110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YS Trip">
+    <meta name="theme-color" content="#0f0f1a">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230f0f1a' width='100' height='100' rx='20'/><text y='68' x='50' text-anchor='middle' font-size='50'>🦬</text></svg>">
+    <title>Yellowstone Trip</title>
+    <link rel="stylesheet" href="lib/leaflet.css" />
+    <script src="lib/leaflet.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --bg-primary: #0c1117;
+            --bg-secondary: #141e29;
+            --bg-card: rgba(18, 28, 38, 0.92);
+            --bg-glass: rgba(12, 17, 23, 0.78);
+            --bg-warm: rgba(45, 28, 12, 0.3);
+            --accent-red: #e8634b;
+            --accent-blue: #5bb8d4;
+            --accent-green: #5ab87a;
+            --accent-orange: #e89c4b;
+            --accent-purple: #a987d4;
+            --accent-yellow: #d4b85a;
+            --accent-gold: #c9913a;
+            --accent-amber: #d4783a;
+            --text-primary: #f0ece4;
+            --text-secondary: #a8a093;
+            --text-muted: #6b6560;
+            --border: rgba(200, 180, 150, 0.1);
+            --border-warm: rgba(200, 160, 100, 0.15);
+            --glow-red: rgba(232, 99, 75, 0.25);
+            --glow-blue: rgba(91, 184, 212, 0.25);
+            --glow-green: rgba(90, 184, 122, 0.25);
+            --radius: 18px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Topo texture overlay */
+        body::before {
+            content: '';
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='400' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 200 Q100 180 200 200 T400 200' fill='none' stroke='rgba(200,145,58,0.04)' stroke-width='1'/%3E%3Cpath d='M0 220 Q100 200 200 220 T400 220' fill='none' stroke='rgba(200,145,58,0.03)' stroke-width='1'/%3E%3Cpath d='M0 240 Q100 220 200 240 T400 240' fill='none' stroke='rgba(200,145,58,0.02)' stroke-width='1'/%3E%3Cpath d='M0 100 Q150 80 300 100 T400 100' fill='none' stroke='rgba(200,145,58,0.03)' stroke-width='1'/%3E%3Cpath d='M0 300 Q120 280 240 300 T400 300' fill='none' stroke='rgba(200,145,58,0.02)' stroke-width='1'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 0; opacity: 0.6;
+        }
+
+        #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; }
+        .leaflet-control-zoom { display: none; }
+
+        /* ===== TOP BAR ===== */
+        .top-bar {
+            position: absolute; top: var(--safe-top); left: 0; right: 0;
+            z-index: 1000; padding: 12px 16px;
+            display: flex; flex-direction: column; gap: 10px;
+            pointer-events: none;
+        }
+        .top-bar > * { pointer-events: auto; }
+
+        .header-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon {
+            width: 38px; height: 38px;
+            background: linear-gradient(145deg, #c9913a, #8b5e2b);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+            box-shadow: 0 2px 8px rgba(201, 145, 58, 0.3);
+        }
+        .logo-text h1 {
+            font-size: 0.9rem; font-weight: 800; letter-spacing: 1.5px;
+            background: linear-gradient(90deg, #e8c47a, #c9913a);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .logo-text span { font-size: 0.62rem; color: var(--text-muted); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+
+        .header-btns { display: flex; gap: 6px; }
+        .icon-btn {
+            width: 36px; height: 36px; border-radius: 10px;
+            border: 1px solid var(--border); background: var(--bg-glass);
+            backdrop-filter: blur(10px); color: var(--text-primary);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 16px; transition: all 0.2s;
+        }
+        .icon-btn:active { transform: scale(0.9); }
+        .icon-btn.has-badge::after {
+            content: ''; position: absolute; top: -2px; right: -2px;
+            width: 8px; height: 8px; background: var(--accent-green);
+            border-radius: 50%; border: 2px solid var(--bg-primary);
+        }
+
+        /* Plan Toggle */
+        .plan-toggle {
+            display: flex;
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 4px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+        .plan-btn {
+            flex: 1; padding: 10px 16px; border: none; background: transparent;
+            color: var(--text-secondary); border-radius: 9px; cursor: pointer;
+            font-weight: 600; font-size: 0.78rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .plan-btn.active {
+            background: linear-gradient(135deg, #c9913a, #8b5e2b);
+            color: #f0ece4; box-shadow: 0 4px 15px rgba(201, 145, 58, 0.35);
+        }
+
+        /* ===== DAY PILLS ===== */
+        .day-pills {
+            position: absolute; top: calc(var(--safe-top) + 130px); left: 16px;
+            z-index: 1000; display: flex; flex-direction: column; gap: 8px;
+        }
+        .day-pill {
+            width: 44px; height: 44px; border-radius: 50%;
+            border: 2px solid var(--border); background: var(--bg-glass);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-weight: 700; font-size: 0.7rem;
+            color: var(--text-secondary); transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .day-pill.active { transform: scale(1.1); }
+        .day-pill.d1.active { border-color: var(--accent-amber); color: var(--accent-amber); box-shadow: 0 0 16px rgba(212, 120, 58, 0.3); background: rgba(212, 120, 58, 0.12); }
+        .day-pill.d2.active { border-color: var(--accent-blue); color: var(--accent-blue); box-shadow: 0 0 16px rgba(91, 184, 212, 0.25); background: rgba(91, 184, 212, 0.1); }
+        .day-pill.d3.active { border-color: var(--accent-green); color: var(--accent-green); box-shadow: 0 0 16px rgba(90, 184, 122, 0.25); background: rgba(90, 184, 122, 0.1); }
+        .day-pill.all.active { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(201, 145, 58, 0.12); }
+
+        /* ===== BOTTOM SHEET ===== */
+        .bottom-sheet {
+            position: absolute; bottom: 0; left: 0; right: 0; z-index: 1000;
+            background: linear-gradient(180deg, #141e29 0%, #0c1117 100%);
+            border-radius: 26px 26px 0 0;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 72vh;
+            box-shadow: 0 -12px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200, 160, 100, 0.08);
+            border-top: 1px solid var(--border-warm);
+            padding-bottom: var(--safe-bottom);
+        }
+        .bottom-sheet.collapsed { transform: translateY(calc(100% - 180px - var(--safe-bottom))); }
+        .bottom-sheet.expanded { transform: translateY(0); }
+
+        .sheet-handle { display: flex; justify-content: center; padding: 12px 0 8px; cursor: grab; }
+        .sheet-handle-bar { width: 40px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, rgba(201,145,58,0.3), rgba(201,145,58,0.6), rgba(201,145,58,0.3)); }
+
+        .sheet-header { padding: 0 20px 12px; display: flex; align-items: center; justify-content: space-between; }
+        .sheet-title { font-size: 1.05rem; font-weight: 800; letter-spacing: 0.3px; }
+        .sheet-subtitle { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+        .sheet-stats { display: flex; gap: 8px; }
+        .sheet-stat {
+            background: rgba(255,255,255,0.05); padding: 4px 10px;
+            border-radius: 20px; font-size: 0.68rem; color: var(--text-secondary);
+            font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+        }
+
+        .sheet-content {
+            overflow-y: auto; max-height: calc(72vh - 100px);
+            padding: 0 16px 20px; -webkit-overflow-scrolling: touch;
+        }
+        .sheet-content::-webkit-scrollbar { width: 0; }
+
+        /* Stop Cards */
+        .stop-card {
+            background: linear-gradient(135deg, rgba(30, 40, 50, 0.8), rgba(20, 28, 36, 0.9));
+            border: 1px solid var(--border-warm);
+            border-radius: 16px; padding: 14px 14px 14px 18px; margin-bottom: 12px;
+            cursor: pointer; transition: all 0.25s ease;
+            position: relative; overflow: hidden;
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        }
+        .stop-card::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 4px; height: 100%; border-radius: 0 4px 4px 0;
+        }
+        .stop-card.day-1 { border-color: rgba(212, 120, 58, 0.15); }
+        .stop-card.day-1::before { background: linear-gradient(180deg, var(--accent-amber), var(--accent-red)); }
+        .stop-card.day-2 { border-color: rgba(91, 184, 212, 0.12); }
+        .stop-card.day-2::before { background: linear-gradient(180deg, var(--accent-blue), var(--accent-purple)); }
+        .stop-card.day-3 { border-color: rgba(90, 184, 122, 0.12); }
+        .stop-card.day-3::before { background: linear-gradient(180deg, var(--accent-green), var(--accent-blue)); }
+        .stop-card:active { transform: scale(0.97); border-color: rgba(201, 145, 58, 0.3); }
+        .stop-card.completed { opacity: 0.45; }
+        .stop-card.completed::after {
+            content: '\2713'; position: absolute; top: 12px; right: 14px;
+            width: 24px; height: 24px; background: linear-gradient(135deg, var(--accent-green), #3d8b5a);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 12px; font-weight: 700;
+            box-shadow: 0 2px 8px rgba(90, 184, 122, 0.3);
+        }
+
+        .stop-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .stop-num {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.72rem; color: white; flex-shrink: 0;
+        }
+        .day-1 .stop-num { background: linear-gradient(135deg, #c9913a, #8b5e2b); box-shadow: 0 2px 6px rgba(201, 145, 58, 0.3); }
+        .day-2 .stop-num { background: linear-gradient(135deg, #4a9bb5, #2d6e80); box-shadow: 0 2px 6px rgba(91, 184, 212, 0.3); }
+        .day-3 .stop-num { background: linear-gradient(135deg, #4a9b64, #2d6e42); box-shadow: 0 2px 6px rgba(90, 184, 122, 0.3); }
+
+        .stop-card-title { font-size: 0.85rem; font-weight: 700; flex: 1; }
+        .stop-card-time { font-size: 0.65rem; color: var(--text-muted); font-family: 'SF Mono', 'Menlo', 'Courier New', monospace; }
+        .stop-card-desc {
+            font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5;
+            margin-bottom: 8px;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .stop-card-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+        .tag { font-size: 0.58rem; padding: 3px 9px; border-radius: 20px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+        .tag-food { background: rgba(232, 156, 75, 0.12); color: #e89c4b; border: 1px solid rgba(232, 156, 75, 0.2); }
+        .tag-tip { background: rgba(90, 184, 122, 0.1); color: #5ab87a; border: 1px solid rgba(90, 184, 122, 0.2); }
+        .tag-photo { background: rgba(169, 135, 212, 0.1); color: #a987d4; border: 1px solid rgba(169, 135, 212, 0.2); }
+        .tag-wildlife { background: rgba(91, 184, 212, 0.1); color: #5bb8d4; border: 1px solid rgba(91, 184, 212, 0.2); }
+        .tag-hack { background: rgba(232, 99, 75, 0.1); color: #e8634b; border: 1px solid rgba(232, 99, 75, 0.2); }
+        .tag-gas { background: rgba(212, 184, 90, 0.1); color: #d4b85a; border: 1px solid rgba(212, 184, 90, 0.2); }
+        .tag-cost { background: rgba(90, 184, 122, 0.08); color: #5ab87a; border: 1px solid rgba(90, 184, 122, 0.15); }
+
+        /* ===== DETAIL OVERLAY ===== */
+        .detail-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 2000; background: var(--bg-primary);
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+        }
+        .detail-overlay.open { transform: translateY(0); }
+
+        .detail-header {
+            position: sticky; top: 0;
+            background: var(--bg-glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            padding: 16px 20px;
+            display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid var(--border); z-index: 10;
+        }
+        .detail-back {
+            width: 36px; height: 36px; border-radius: 50%;
+            border: 1px solid var(--border); background: rgba(255,255,255,0.05);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 18px; color: var(--text-primary);
+        }
+        .detail-back:active { transform: scale(0.9); }
+        .detail-title-area h2 { font-size: 1rem; font-weight: 700; }
+        .detail-title-area span { font-size: 0.7rem; color: var(--text-muted); }
+
+        .detail-body { padding: 20px; }
+
+        .detail-section {
+            margin-bottom: 14px; padding: 14px 16px; border-radius: 14px;
+            border: 1px solid var(--border-warm); position: relative; overflow: hidden;
+            background: linear-gradient(135deg, rgba(30, 40, 50, 0.4), rgba(18, 26, 34, 0.6));
+        }
+        .detail-section::before {
+            content: ''; position: absolute; top: 0; left: 0;
+            width: 100%; height: 3px;
+        }
+        .detail-section.food::before { background: linear-gradient(90deg, var(--accent-orange), transparent); }
+        .detail-section.tip::before { background: linear-gradient(90deg, var(--accent-green), transparent); }
+        .detail-section.hack::before { background: linear-gradient(90deg, var(--accent-red), transparent); }
+        .detail-section.cost::before { background: linear-gradient(90deg, var(--accent-blue), transparent); }
+        .detail-section.info::before { background: linear-gradient(90deg, var(--accent-purple), transparent); }
+        .detail-section.gas::before { background: linear-gradient(90deg, var(--accent-yellow), transparent); }
+        .detail-section.alert::before { background: linear-gradient(90deg, #ff6b35, transparent); }
+
+        .detail-section h4 {
+            font-size: 0.78rem; font-weight: 700; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .detail-section.food h4 { color: var(--accent-orange); }
+        .detail-section.tip h4 { color: var(--accent-green); }
+        .detail-section.hack h4 { color: var(--accent-red); }
+        .detail-section.cost h4 { color: var(--accent-blue); }
+        .detail-section.info h4 { color: var(--accent-purple); }
+        .detail-section.gas h4 { color: var(--accent-yellow); }
+        .detail-section.alert h4 { color: #ff6b35; }
+
+        .detail-section p { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.7; }
+
+        .detail-desc {
+            font-size: 0.85rem; color: var(--text-primary); line-height: 1.7;
+            margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+        }
+
+        .detail-time-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            background: rgba(201, 145, 58, 0.1); border: 1px solid rgba(201, 145, 58, 0.2);
+            color: var(--accent-gold); padding: 7px 14px; border-radius: 20px;
+            font-size: 0.72rem; font-weight: 700; margin-bottom: 12px;
+            font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+        }
+
+        .verify-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: rgba(255, 209, 102, 0.12); border: 1px solid rgba(255, 209, 102, 0.25);
+            color: var(--accent-yellow); padding: 3px 8px; border-radius: 12px;
+            font-size: 0.65rem; font-weight: 600; margin-left: 6px;
+        }
+
+        .cost-line {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.75rem;
+        }
+        .cost-line:last-child { border-bottom: none; }
+        .cost-line .cost-label { color: var(--text-secondary); }
+        .cost-line .cost-value { color: var(--accent-green); font-weight: 600; font-family: 'SF Mono', 'Menlo', 'Courier New', monospace; }
+        .cost-line .cost-value.free { color: var(--accent-green); }
+        .cost-line .cost-value.verify { color: var(--accent-yellow); }
+
+        .navigate-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 15px; border-radius: 14px; border: none;
+            background: linear-gradient(135deg, #3d7a4a, #2d5e3a);
+            color: #f0ece4; font-weight: 700; font-size: 0.85rem;
+            cursor: pointer; margin-top: 14px; transition: transform 0.2s;
+            box-shadow: 0 4px 14px rgba(61, 122, 74, 0.3);
+            letter-spacing: 0.3px;
+        }
+        .navigate-btn:active { transform: scale(0.97); }
+
+        .complete-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 15px; border-radius: 14px; border: 2px solid rgba(90, 184, 122, 0.4);
+            background: transparent; color: var(--accent-green);
+            font-weight: 700; font-size: 0.85rem;
+            cursor: pointer; margin-top: 8px; transition: all 0.25s;
+        }
+        .complete-btn:active { transform: scale(0.97); }
+        .complete-btn.done {
+            background: linear-gradient(135deg, #4a9b64, #2d6e42);
+            color: white; border-color: transparent;
+            box-shadow: 0 4px 14px rgba(90, 184, 122, 0.3);
+        }
+
+        /* ===== LAYER MENU ===== */
+        .layer-menu {
+            position: absolute; top: calc(var(--safe-top) + 60px); right: 16px;
+            z-index: 1000; background: var(--bg-glass);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 8px; display: none; flex-direction: column; gap: 4px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .layer-menu.show { display: flex; }
+        .layer-option {
+            padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;
+            cursor: pointer; color: var(--text-secondary); transition: all 0.2s;
+            border: none; background: none; text-align: left; white-space: nowrap;
+        }
+        .layer-option:active, .layer-option.active { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+
+        /* ===== INFO PANEL ===== */
+        .info-panel {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 2500; background: var(--bg-primary);
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+        }
+        .info-panel.open { transform: translateY(0); }
+        .info-panel-header {
+            position: sticky; top: 0; background: var(--bg-glass);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid var(--border); z-index: 10;
+        }
+        .info-panel-body { padding: 20px; }
+        .info-card {
+            background: linear-gradient(145deg, rgba(30, 40, 50, 0.6), rgba(18, 26, 34, 0.8));
+            border: 1px solid var(--border-warm);
+            border-radius: 16px; padding: 18px; margin-bottom: 14px;
+        }
+        .info-card h3 { font-size: 0.88rem; font-weight: 800; margin-bottom: 10px; color: var(--text-primary); }
+        .info-card p { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 6px; }
+        .info-card .verify-note {
+            font-size: 0.7rem; color: var(--accent-yellow); font-weight: 600;
+            margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-warm);
+        }
+        .info-card ul { list-style: none; margin-top: 6px; }
+        .info-card li {
+            font-size: 0.75rem; color: var(--text-secondary); padding: 6px 0;
+            border-bottom: 1px solid rgba(200, 160, 100, 0.05);
+            display: flex; justify-content: space-between;
+        }
+        .info-card li span { color: var(--accent-gold); font-weight: 600; font-size: 0.72rem; }
+
+        /* Progress bar */
+        .progress-bar {
+            margin: 12px 0; background: rgba(200, 160, 100, 0.08); border-radius: 8px; height: 6px;
+            overflow: hidden; border: 1px solid rgba(200, 160, 100, 0.06);
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #c9913a, #e8c47a);
+            border-radius: 8px; transition: width 0.5s ease;
+            box-shadow: 0 0 8px rgba(201, 145, 58, 0.4);
+        }
+        .progress-text { font-size: 0.68rem; color: var(--text-muted); margin-top: 4px; }
+
+        /* Tips */
+        .tips-section { padding: 16px 0; border-top: 1px solid var(--border-warm); margin-top: 16px; }
+        .tips-title { font-size: 0.85rem; font-weight: 800; color: var(--accent-gold); margin-bottom: 12px; letter-spacing: 0.5px; }
+        .tip-mini-card {
+            background: linear-gradient(135deg, rgba(45, 28, 12, 0.3), rgba(30, 20, 10, 0.2));
+            border: 1px solid rgba(200, 145, 58, 0.1);
+            border-radius: 12px; padding: 11px 13px; margin-bottom: 8px;
+            font-size: 0.73rem; line-height: 1.6; color: var(--text-secondary);
+        }
+        .tip-mini-card strong { color: var(--accent-gold); font-weight: 700; }
+
+        /* Animations */
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .stop-card { animation: slideUp 0.4s ease forwards; opacity: 0; }
+        .stop-card:nth-child(1) { animation-delay: 0.05s; }
+        .stop-card:nth-child(2) { animation-delay: 0.1s; }
+        .stop-card:nth-child(3) { animation-delay: 0.15s; }
+        .stop-card:nth-child(4) { animation-delay: 0.2s; }
+        .stop-card:nth-child(5) { animation-delay: 0.25s; }
+        .stop-card:nth-child(6) { animation-delay: 0.3s; }
+        .stop-card:nth-child(7) { animation-delay: 0.35s; }
+
+        /* Desktop */
+        @media (min-width: 769px) {
+            .bottom-sheet { left: auto; right: 20px; bottom: 20px; top: 20px; width: 420px; border-radius: var(--radius); max-height: none; transform: none !important; }
+            .bottom-sheet.collapsed { transform: none !important; }
+            .sheet-handle { display: none; }
+            .sheet-content { max-height: calc(100vh - 160px); }
+            .day-pills { top: 130px; }
+            .detail-overlay, .info-panel { left: auto; right: 20px; top: 20px; bottom: 20px; width: 420px; border-radius: var(--radius); transform: translateX(120%); }
+            .detail-overlay.open, .info-panel.open { transform: translateX(0); }
+        }
+
+        /* ===== TOOLS BAR ===== */
+        .tools-bar {
+            position: absolute; bottom: calc(180px + var(--safe-bottom)); left: 16px;
+            z-index: 1000; display: flex; flex-direction: column; gap: 6px;
+        }
+        .tool-btn {
+            width: 42px; height: 42px; border-radius: 12px;
+            border: 1px solid var(--border-warm); background: rgba(18, 28, 38, 0.85);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 17px; color: var(--accent-gold);
+            transition: all 0.2s; box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+        }
+        .tool-btn:active { transform: scale(0.9); }
+
+        /* Geyser Timer */
+        .geyser-timer {
+            position: absolute; bottom: calc(185px + var(--safe-bottom)); left: 70px;
+            z-index: 1000; background: var(--bg-glass);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border); border-radius: 14px;
+            padding: 12px 16px; display: none; min-width: 220px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .geyser-timer.show { display: block; }
+        .geyser-timer h4 { font-size: 0.75rem; color: var(--accent-orange); margin-bottom: 8px; }
+        .geyser-timer .timer-display {
+            font-size: 1.8rem; font-weight: 800; color: var(--text-primary);
+            font-family: 'SF Mono', 'Menlo', monospace; text-align: center; margin: 8px 0;
+        }
+        .geyser-timer .timer-label { font-size: 0.68rem; color: var(--text-muted); text-align: center; }
+        .geyser-timer .timer-btns { display: flex; gap: 6px; margin-top: 10px; }
+        .geyser-timer .timer-btn {
+            flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+            background: rgba(255,255,255,0.05); color: var(--text-secondary);
+            font-size: 0.68rem; font-weight: 600; cursor: pointer; text-align: center;
+        }
+        .geyser-timer .timer-btn:active { background: rgba(255,255,255,0.1); }
+        .geyser-timer .timer-btn.active-timer { border-color: var(--accent-orange); color: var(--accent-orange); }
+
+        /* Quick Panel (photo list, packing, emergency) */
+        .quick-panel {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 2500; background: var(--bg-primary);
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+        }
+        .quick-panel.open { transform: translateY(0); }
+        .quick-panel-header {
+            position: sticky; top: 0; background: var(--bg-glass);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid var(--border); z-index: 10;
+        }
+        .quick-panel-body { padding: 20px; }
+
+        /* Checklist items */
+        .check-item {
+            display: flex; align-items: flex-start; gap: 10px; padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .check-box {
+            width: 22px; height: 22px; border-radius: 6px;
+            border: 2px solid var(--border); flex-shrink: 0; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; margin-top: 1px;
+        }
+        .check-box.checked { background: var(--accent-green); border-color: var(--accent-green); }
+        .check-box.checked::after { content: '\\2713'; color: white; font-size: 12px; font-weight: 700; }
+        .check-item.checked .check-text { text-decoration: line-through; opacity: 0.5; }
+        .check-text { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; }
+        .check-text strong { color: var(--text-primary); font-weight: 600; }
+        .check-category { font-size: 0.72rem; font-weight: 700; color: var(--accent-blue); margin: 16px 0 8px; letter-spacing: 0.5px; }
+
+        /* Photo shot card */
+        .shot-card {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: 12px; padding: 12px; margin-bottom: 10px;
+        }
+        .shot-card h4 { font-size: 0.82rem; font-weight: 700; margin-bottom: 4px; }
+        .shot-card .shot-meta { font-size: 0.7rem; color: var(--accent-purple); margin-bottom: 6px; }
+        .shot-card p { font-size: 0.73rem; color: var(--text-secondary); line-height: 1.5; }
+
+        /* Notes */
+        .note-area {
+            width: 100%; min-height: 80px; max-height: 150px;
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: 10px; padding: 10px 12px; margin-top: 12px;
+            color: var(--text-primary); font-size: 0.78rem; line-height: 1.5;
+            resize: vertical; font-family: inherit;
+        }
+        .note-area::placeholder { color: var(--text-muted); }
+        .note-area:focus { outline: none; border-color: var(--accent-blue); }
+        .note-label { font-size: 0.72rem; color: var(--text-muted); margin-top: 14px; margin-bottom: 4px; font-weight: 600; }
+
+        /* Weather card */
+        .weather-card {
+            background: linear-gradient(135deg, rgba(45, 60, 75, 0.4), rgba(20, 35, 50, 0.5));
+            border: 1px solid rgba(91, 184, 212, 0.15); border-radius: 16px;
+            padding: 16px; margin-bottom: 16px;
+        }
+        .weather-card h4 { font-size: 0.78rem; color: var(--accent-blue); margin-bottom: 10px; font-weight: 700; }
+        .weather-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .weather-day { text-align: center; padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.03); }
+        .weather-day .wd-label { font-size: 0.65rem; color: var(--text-muted); }
+        .weather-day .wd-icon { font-size: 1.2rem; margin: 4px 0; }
+        .weather-day .wd-temp { font-size: 0.75rem; font-weight: 600; }
+        .sun-times { display: flex; justify-content: space-around; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+        .sun-time { text-align: center; }
+        .sun-time .st-icon { font-size: 1rem; }
+        .sun-time .st-label { font-size: 0.62rem; color: var(--text-muted); }
+        .sun-time .st-value { font-size: 0.75rem; font-weight: 600; color: var(--accent-orange); }
+
+        /* Day time estimator */
+        .time-est {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;
+        }
+        .time-est h4 { font-size: 0.72rem; color: var(--accent-orange); margin-bottom: 6px; }
+        .time-est-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 0.7rem; }
+        .time-est-row .te-stop { color: var(--text-secondary); }
+        .time-est-row .te-time { color: var(--text-primary); font-weight: 600; font-family: 'SF Mono','Menlo',monospace; }
+
+        @media (min-width: 769px) {
+            .tools-bar { bottom: 40px; }
+            .geyser-timer { bottom: 45px; }
+            .quick-panel { left: auto; right: 20px; top: 20px; bottom: 20px; width: 420px; border-radius: var(--radius); transform: translateX(120%); }
+            .quick-panel.open { transform: translateX(0); }
+        }
+
+        .leaflet-popup-content-wrapper { background: linear-gradient(145deg, #1a2633, #0f1820); color: var(--text-primary); border-radius: 14px; border: 1px solid var(--border-warm); box-shadow: 0 12px 40px rgba(0,0,0,0.6); padding: 0; }
+        .leaflet-popup-content { margin: 12px 14px; font-size: 13px; }
+        .leaflet-popup-tip { background: #1a2633; }
+        .leaflet-popup-close-button { color: var(--text-muted) !important; font-size: 20px !important; }
+        .popup-mini h3 { font-size: 0.85rem; font-weight: 700; margin-bottom: 3px; color: var(--accent-gold); }
+        .popup-mini p { font-size: 0.72rem; color: var(--text-secondary); }
+        .popup-mini .popup-tap { font-size: 0.65rem; color: var(--accent-blue); margin-top: 6px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="header-card">
+            <div class="logo">
+                <div class="logo-icon">&#127956;</div>
+                <div class="logo-text">
+                    <h1>YELLOWSTONE</h1>
+                    <span>3-Day Adventure Planner</span>
+                </div>
+            </div>
+            <div class="header-btns">
+                <button class="icon-btn" onclick="openInfoPanel()" aria-label="Trip info">&#9432;</button>
+                <button class="icon-btn" onclick="toggleLayerMenu()" aria-label="Map style">&#127758;</button>
+            </div>
+        </div>
+        <div class="plan-toggle">
+            <button class="plan-btn active" onclick="switchPlan('A')">Plan A &bull; Original</button>
+            <button class="plan-btn" onclick="switchPlan('B')">Plan B &bull; Optimized</button>
+        </div>
+    </div>
+
+    <div class="layer-menu" id="layerMenu">
+        <button class="layer-option active" onclick="setMapLayer('satellite')">&#127760; Satellite</button>
+        <button class="layer-option" onclick="setMapLayer('terrain')">&#9968; Terrain</button>
+        <button class="layer-option" onclick="setMapLayer('dark')">&#127761; Dark</button>
+        <button class="layer-option" onclick="setMapLayer('topo')">&#128506; Topographic</button>
+    </div>
+
+    <div class="day-pills">
+        <div class="day-pill all active" onclick="filterDay('all')">ALL</div>
+        <div class="day-pill d1" onclick="filterDay('0')">D1</div>
+        <div class="day-pill d2" onclick="filterDay('1')">D2</div>
+        <div class="day-pill d3" onclick="filterDay('2')">D3</div>
+    </div>
+
+    <div class="bottom-sheet collapsed" id="bottomSheet">
+        <div class="sheet-handle" id="sheetHandle"><div class="sheet-handle-bar"></div></div>
+        <div class="sheet-header" id="sheetHeader"></div>
+        <div class="sheet-content" id="sheetContent"></div>
+    </div>
+
+    <div class="detail-overlay" id="detailOverlay">
+        <div class="detail-header">
+            <div class="detail-back" onclick="closeDetail()">&#8592;</div>
+            <div class="detail-title-area" id="detailTitle"></div>
+        </div>
+        <div class="detail-body" id="detailBody"></div>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="info-panel" id="infoPanel">
+        <div class="info-panel-header">
+            <div class="detail-back" onclick="closeInfoPanel()">&#8592;</div>
+            <div class="detail-title-area"><h2>Trip Info & Costs</h2><span>Fees, Gas, Bookings & Checklist</span></div>
+        </div>
+        <div class="info-panel-body" id="infoPanelBody"></div>
+    </div>
+
+    <!-- Tools Bar (left side) -->
+    <div class="tools-bar">
+        <div class="tool-btn" onclick="toggleGeyserTimer()" title="Geyser Timer">&#9202;</div>
+        <div class="tool-btn" onclick="openQuickPanel('photo')" title="Photo Shot List">&#128247;</div>
+        <div class="tool-btn" onclick="openQuickPanel('packing')" title="Packing Checklist">&#127890;</div>
+        <div class="tool-btn" onclick="openQuickPanel('emergency')" title="Emergency Info">&#128680;</div>
+        <div class="tool-btn" onclick="openQuickPanel('weather')" title="Weather & Sun">&#9728;</div>
+        <div class="tool-btn" onclick="startOfflineCache()" title="Download Map for Offline" id="cacheBtn">&#128229;</div>
+    </div>
+
+    <!-- Offline Cache Progress -->
+    <div id="cacheOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(12,17,23,0.95);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px;">
+        <div style="text-align:center;max-width:320px;">
+            <div style="font-size:3rem;margin-bottom:16px;" id="cacheIcon">&#128229;</div>
+            <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:8px;color:var(--accent-gold);" id="cacheTitle">Caching Map Tiles</h2>
+            <p style="font-size:0.78rem;color:var(--text-secondary);line-height:1.6;margin-bottom:20px;" id="cacheDesc">Downloading Yellowstone & Grand Teton area tiles for offline use. This may take 2-4 minutes on WiFi.</p>
+            <div style="width:100%;background:rgba(200,160,100,0.1);border-radius:8px;height:8px;overflow:hidden;border:1px solid rgba(200,160,100,0.1);margin-bottom:12px;">
+                <div id="cacheProgress" style="height:100%;width:0%;background:linear-gradient(90deg,#c9913a,#e8c47a);border-radius:8px;transition:width 0.3s;box-shadow:0 0 8px rgba(201,145,58,0.4);"></div>
+            </div>
+            <p style="font-size:0.72rem;color:var(--text-muted);" id="cacheStatus">Preparing...</p>
+            <button onclick="cancelCache()" id="cacheCancelBtn" style="margin-top:16px;padding:10px 24px;border-radius:10px;border:1px solid var(--border-warm);background:transparent;color:var(--text-secondary);font-size:0.78rem;font-weight:600;cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Geyser Timer -->
+    <div class="geyser-timer" id="geyserTimer">
+        <h4>&#9202; Geyser Countdown Timer</h4>
+        <div class="timer-display" id="timerDisplay">--:--</div>
+        <div class="timer-label" id="timerLabel">Set a timer after checking prediction board</div>
+        <div class="timer-btns">
+            <div class="timer-btn" onclick="startGeyserTimer(60)">60 min</div>
+            <div class="timer-btn" onclick="startGeyserTimer(75)">75 min</div>
+            <div class="timer-btn" onclick="startGeyserTimer(90)">90 min</div>
+            <div class="timer-btn" onclick="startGeyserTimer(0)">Reset</div>
+        </div>
+        <p style="font-size:0.65rem;color:var(--text-muted);margin-top:8px;line-height:1.4;">Tip: Check the prediction board at any visitor center or the NPS app for exact next eruption time, then set a custom timer.</p>
+        <div style="margin-top:8px;">
+            <label style="font-size:0.68rem;color:var(--text-muted);">Custom minutes:</label>
+            <div style="display:flex;gap:6px;margin-top:4px;">
+                <input type="number" id="customMin" min="1" max="999" placeholder="min" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text-primary);font-size:0.75rem;">
+                <button onclick="startGeyserTimer(parseInt(document.getElementById('customMin').value))" style="padding:6px 12px;border-radius:6px;border:1px solid var(--accent-orange);background:transparent;color:var(--accent-orange);font-size:0.72rem;font-weight:600;cursor:pointer;">Start</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Panel (reused for photo, packing, emergency, weather) -->
+    <div class="quick-panel" id="quickPanel">
+        <div class="quick-panel-header">
+            <div class="detail-back" onclick="closeQuickPanel()">&#8592;</div>
+            <div class="detail-title-area" id="quickPanelTitle"></div>
+        </div>
+        <div class="quick-panel-body" id="quickPanelBody"></div>
+    </div>
+
+    <script>
+    // ===== MAP =====
+    const map = L.map('map', { center: [44.6, -110.5], zoom: 9, zoomControl: false, attributionControl: false });
+    const tileLayers = {
+        satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+        terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 }),
+        dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }),
+        topo: L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 })
+    };
+    let currentLayer = tileLayers.satellite;
+    currentLayer.addTo(map);
+    const labels = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 19, pane: 'overlayPane' });
+    labels.addTo(map);
+
+    function setMapLayer(type) {
+        map.removeLayer(currentLayer); map.removeLayer(labels);
+        currentLayer = tileLayers[type]; currentLayer.addTo(map);
+        if (type === 'satellite') labels.addTo(map);
+        document.querySelectorAll('.layer-option').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('layerMenu').classList.remove('show');
+    }
+    function toggleLayerMenu() { document.getElementById('layerMenu').classList.toggle('show'); }
+    map.on('click', () => { document.getElementById('layerMenu').classList.remove('show'); });
+
+    // ===== MARKERS =====
+    function createIcon(color, number, size = 30) {
+        return L.divIcon({ className: '', html: `<div style="width:${size}px;height:${size}px;background:linear-gradient(135deg,${color},${color}dd);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:${size*0.38}px;border:2.5px solid white;box-shadow:0 3px 12px ${color}66;font-family:-apple-system,sans-serif;">${number}</div>`, iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -size/2] });
+    }
+    function createHotelIcon(color) {
+        return L.divIcon({ className: '', html: `<div style="width:34px;height:34px;background:linear-gradient(135deg,${color},${color}cc);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:16px;border:2.5px solid white;box-shadow:0 3px 12px ${color}66;">&#9962;</div>`, iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -19] });
+    }
+    function createGasIcon() {
+        return L.divIcon({ className: '', html: `<div style="width:26px;height:26px;background:var(--accent-yellow);background:#ffd166;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid white;box-shadow:0 2px 8px rgba(255,209,102,0.4);">&#9981;</div>`, iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -15] });
+    }
+
+    const dayColors = ['#d4783a', '#5bb8d4', '#5ab87a'];
+
+    // ===== COMPLETION STATE (localStorage) =====
+    function getCompletedStops() {
+        try { return JSON.parse(localStorage.getItem('ys_completed') || '{}'); } catch { return {}; }
+    }
+    function toggleComplete(planKey, dayIdx, stopIdx) {
+        const completed = getCompletedStops();
+        const key = `${planKey}_${dayIdx}_${stopIdx}`;
+        if (completed[key]) delete completed[key];
+        else completed[key] = Date.now();
+        localStorage.setItem('ys_completed', JSON.stringify(completed));
+        renderSheet();
+        updateCompleteBtn(planKey, dayIdx, stopIdx);
+    }
+    function isCompleted(planKey, dayIdx, stopIdx) {
+        return !!getCompletedStops()[`${planKey}_${dayIdx}_${stopIdx}`];
+    }
+    function getProgress() {
+        const completed = getCompletedStops();
+        const data = getPlanData();
+        const prefix = currentPlan;
+        let total = 0, done = 0;
+        data.days.forEach((day, di) => { day.stops.forEach((_, si) => { total++; if (completed[`${prefix}_${di}_${si}`]) done++; }); });
+        return { total, done };
+    }
+    function updateCompleteBtn(planKey, dayIdx, stopIdx) {
+        const btn = document.getElementById('complete-btn');
+        if (!btn) return;
+        const done = isCompleted(planKey, dayIdx, stopIdx);
+        btn.classList.toggle('done', done);
+        btn.textContent = done ? '✓ Completed!' : 'Mark as Complete';
+    }
+
+    // ===== GAS STATIONS DATA =====
+    const gasStations = [
+        { name: "Exxon - West Yellowstone", coords: [44.6617, -111.1005], address: "309 Firehole Ave, West Yellowstone, MT 59758", note: "Multiple stations on Firehole Ave. Fill up here before entering park via West Entrance." },
+        { name: "Island Park Gas (Conoco)", coords: [44.4183, -111.3726], address: "4149 Quakie Ln, Island Park, ID 83429", note: "Near your cabin. Fill each morning before driving into the park." },
+        { name: "Canyon Lodge Gas Station", coords: [44.7341, -110.4862], address: "Canyon Village, Yellowstone NP", note: "In-park station. Open seasonally (typically mid-May to mid-Oct). Expensive but convenient on Day 1." },
+        { name: "Grant Village Gas Station", coords: [44.3917, -110.5608], address: "Grant Village, Yellowstone NP", note: "South end of park. Good for filling up on Day 3 before drive to Bozeman." },
+        { name: "Mammoth General Store Gas", coords: [44.9731, -110.7005], address: "Mammoth Hot Springs, Yellowstone NP", note: "Near north entrance. Available but pricier than gateway towns." },
+        { name: "Jackson - Maverick", coords: [43.4810, -110.7621], address: "850 W Broadway Ave, Jackson, WY 83001", note: "If visiting Jackson for dinner on Day 2. Multiple stations in town." },
+        { name: "Gardiner, MT (Sinclair)", coords: [45.0318, -110.7049], address: "220 W Park St, Gardiner, MT 59030", note: "North entrance gateway. Cheaper than in-park gas. Good option before Day 1 entry." }
+    ];
+
+    // ===== MAIN DATA =====
+    const planA = { days: [
+        {
+            title: "Upper Loop & Canyon",
+            subtitle: "Wildlife + Waterfalls + Hot Springs",
+            stats: { miles: "284 mi", driving: "7.5-8.5 hrs", stops: "9 stops" },
+            start: { name: "C'mon Inn, Bozeman", coords: [45.6770, -111.0429] },
+            end: { name: "Cabin Village, Island Park", coords: [44.4211, -111.3742] },
+            stops: [
+                {
+                    name: "Mammoth Hot Springs",
+                    coords: [44.9631, -110.7115],
+                    time: "1.5 hrs",
+                    hours: "24/7 (outdoor feature). Albright Visitor Center: 9 AM - 5 PM daily.",
+                    parking: "Free. Multiple lots at Lower Terraces and Albright Visitor Center.",
+                    description: "Dramatic terraced hot springs with travertine formations. Walk both Upper and Lower Terraces. The terraces are a living landscape — formations grow and change as hot water deposits calcium carbonate.",
+                    food: "Mammoth Hotel Dining Room (Mammoth Hot Springs Hotel) — breakfast burritos, lunch sandwiches. Terrace Grill opens 7 AM for grab-and-go coffee and quick bites.",
+                    tip: "Start at Lower Terraces boardwalk (most active, colorful). Then drive Upper Terrace Drive (one-way loop, ~1.5 mi). Canary Spring and Palette Spring are usually the most active formations.",
+                    hack: "Park at Albright Visitor Center lot — less crowded than main terrace lot. Elk lounge on the hotel lawn almost every day. Liberty Cap (37-foot dormant cone) is at the base — quick photo.",
+                    costs: [
+                        { item: "Parking", price: "Free" },
+                        { item: "Boardwalk access", price: "Free (covered by park entry)" }
+                    ],
+                    activities: null,
+                    nuisances: "Elk on the roads and lawns — DO NOT approach within 25 yards. Terraces can be slippery when wet. Strong sulfur smell in some areas.",
+                    verify: null,
+                    tags: ["food", "photo", "hack"]
+                },
+                {
+                    name: "Norris Geyser Basin",
+                    coords: [44.7262, -110.7036],
+                    time: "1-1.5 hrs",
+                    hours: "24/7 (outdoor). Norris Museum: typically 9 AM - 5 PM (seasonal).",
+                    parking: "Free. One main lot — fills by 10 AM in summer.",
+                    description: "Hottest and most dynamic thermal area in Yellowstone. Two distinct loops: Porcelain Basin (open, colorful, alien landscape) and Back Basin (forested, includes Steamboat Geyser — world's tallest active geyser at 300+ ft).",
+                    food: "No food services at Norris. Pack trail mix and water. Nearest food: Canyon Village (30 min drive).",
+                    tip: "Porcelain Basin loop is shorter (0.75 mi) and more visually dramatic — do it first. Back Basin (1.5 mi) includes Echinus Geyser and Steamboat. If Steamboat is 'in window' on ranger prediction board, consider waiting.",
+                    hack: "If behind schedule, do ONLY Porcelain Basin — 20-30 min and you've seen the best colors. The milky blue-green Porcelain Springs are unlike anything else in the park.",
+                    costs: [
+                        { item: "Parking", price: "Free" },
+                        { item: "Access", price: "Free" }
+                    ],
+                    activities: null,
+                    nuisances: "Parking lot fills early. Boardwalks are mandatory — ground is thin crust over boiling water. Do NOT leave boardwalks.",
+                    verify: "Check if Steamboat Geyser has had recent activity at the Norris Museum ranger board.",
+                    tags: ["photo", "hack"]
+                },
+                {
+                    name: "Artist Point & Brink of Lower Falls",
+                    coords: [44.7182, -110.4795],
+                    time: "1.5 hrs",
+                    hours: "24/7 (outdoor viewpoints). Canyon Visitor Center: 9 AM - 5 PM.",
+                    parking: "Free. Separate lots for Artist Point (South Rim Drive) and Brink of Lower Falls (North Rim Drive).",
+                    description: "The Grand Canyon of Yellowstone — 1,000 ft deep with golden-yellow rhyolite walls. Lower Falls drops 308 feet (twice the height of Niagara). Three viewpoints: Artist Point (classic postcard), Lookout Point, and Brink of Lower Falls (you stand at the edge).",
+                    food: "Canyon Lodge Eatery — bison burger, salads (cafeteria style, quick). Canyon Lodge Dining Room for sit-down. Washburn General Store has ice cream and snacks.",
+                    tip: "Artist Point gives the classic shot (south rim, 2 min walk from parking). Brink of Lower Falls is a steep 600-step descent but puts you at the literal edge where the river drops. Lookout Point (north rim) is a middle-ground view.",
+                    hack: "Artist Point faces west — morning sun lights the canyon wall perfectly. At Brink trail, mist WILL soak you and your camera — bring a ziplock bag. The trail is paved but steep; takes 15-20 min down, 25-30 min back up.",
+                    costs: [
+                        { item: "Parking", price: "Free" },
+                        { item: "Viewpoints", price: "Free" }
+                    ],
+                    activities: null,
+                    nuisances: "Brink trail is strenuous (equivalent of 30 flights of stairs). Not accessible for mobility-limited visitors. Canyon area very crowded 10 AM - 3 PM.",
+                    verify: "Uncle Tom's Trail has been closed for repairs in past seasons — check NPS alerts for current status.",
+                    tags: ["photo", "food", "hack"]
+                },
+                {
+                    name: "Lookout Point",
+                    coords: [44.7224, -110.4860],
+                    time: "20 min",
+                    hours: "24/7",
+                    parking: "Free. Small lot on North Rim Drive.",
+                    description: "North rim viewpoint of Lower Falls. Quick stop with sweeping canyon views. Red Rock Point trail descends 500 ft for a closer waterfall perspective.",
+                    food: null,
+                    tip: "2-minute walk from parking to main overlook. If you want a lower, more dramatic angle, take the Red Rock Point trail (adds 15-20 min round trip, steep).",
+                    hack: "If Artist Point lot was full, this is your backup. Most people skip Red Rock Point — you'll have it nearly to yourself for photos.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: null,
+                    nuisances: "Red Rock Point trail is steep and can be slippery. Railing is present but the drop is real.",
+                    verify: null,
+                    tags: ["photo"]
+                },
+                {
+                    name: "Hayden Valley",
+                    coords: [44.6608, -110.4544],
+                    time: "30-45 min",
+                    hours: "24/7 (road-based viewing)",
+                    parking: "Free. Use designated pullouts only — do NOT stop on the road.",
+                    description: "Prime wildlife viewing meadow along the Yellowstone River. Called the 'Serengeti of Yellowstone.' Bison herds (hundreds), grizzly bears fishing, wolves, coyotes, pelicans, and bald eagles.",
+                    food: null,
+                    tip: "Drive slowly (25 mph limit). Pull over at designated pullouts when you spot wildlife. Scan hillsides for dark shapes (bison, bears) and the river for grizzlies fishing.",
+                    hack: "Even midday you'll see bison. 'Bear jams' (traffic stopped for bears) are common May-July. If traffic suddenly stops, a grizzly is likely nearby — pull over safely and enjoy! Binoculars make all the difference here.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Wildlife viewing only. No fishing or hiking in the valley (closures for bear management).",
+                    nuisances: "Bison WILL walk on the road and block traffic for 10-30+ minutes. Do NOT honk or try to pass. Stay in your car. Maintain 100 yards from bears, 25 yards from bison.",
+                    verify: "Check for seasonal bear management closures at trailheads near Hayden Valley.",
+                    tags: ["wildlife", "photo"]
+                },
+                {
+                    name: "Mud Volcano",
+                    coords: [44.6249, -110.4325],
+                    time: "30 min",
+                    hours: "24/7 (outdoor boardwalk)",
+                    parking: "Free. Small lot, rarely full.",
+                    description: "Bubbling mud pots, roaring fumaroles, and the eerie Dragon's Mouth Spring. The ground here is literally acidic enough to dissolve metal.",
+                    food: null,
+                    tip: "Short boardwalk loop (0.6 mi). Key features: Dragon's Mouth Spring (cave that sounds like a breathing dragon), Mud Caldron (violently boiling grey mud), Black Dragon's Caldron.",
+                    hack: "Sulfur smell is strong (hydrogen sulfide). 20 minutes covers the whole loop. Best on cool mornings when steam is thick and dramatic. The sounds here are unlike anywhere else.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: null,
+                    nuisances: "Very strong sulfur odor. Boardwalks are mandatory — ground is dangerously thin and acidic. Not a great spot for eating lunch nearby.",
+                    verify: null,
+                    tags: ["tip"]
+                },
+                {
+                    name: "Yellowstone Lake (Quick Stop)",
+                    coords: [44.4652, -110.3927],
+                    time: "20 min",
+                    hours: "24/7. Lake Hotel: seasonal (typically late May - early Oct).",
+                    parking: "Free at Lake Village and Fishing Bridge.",
+                    description: "Largest high-elevation lake in North America (7,733 ft, 136 sq mi). Beautiful but can be skipped if running behind — you'll see it from West Thumb on Day 3.",
+                    food: "Lake Yellowstone Hotel Dining Room — upscale dining with lake views (reservations strongly recommended). Lake Lodge Cafeteria for quick, casual meals.",
+                    tip: "Quick photo stop. The Lake Hotel (built 1891, recently renovated) has a gorgeous sunroom — worth a 5 min peek inside even if you don't eat.",
+                    hack: "If ahead of schedule: Storm Point Trail (2.3 mi loop from Indian Pond trailhead) traces the lakeshore with wildlife. If behind: skip entirely — Day 3's West Thumb gives you lake views.",
+                    costs: [{ item: "Parking", price: "Free" }, { item: "Lake Hotel dinner", price: "$30-55/person", verify: true }],
+                    activities: "Fishing (requires Yellowstone fishing permit: $40/3 days, $55/7 days). Boat tours historically operated from Bridge Bay Marina.",
+                    nuisances: "Lake water is COLD (avg 41°F even in summer). No swimming. Wind can pick up fast making the lake dangerous for small watercraft.",
+                    verify: "Bridge Bay Marina boat tours may or may not operate in 2026. Check nps.gov/yell closer to trip.",
+                    tags: ["food", "photo"]
+                },
+                {
+                    name: "Tower Fall",
+                    coords: [44.8934, -110.3872],
+                    time: "30 min",
+                    hours: "24/7 (viewpoint). Tower Fall Store: typically 8 AM - 8 PM (seasonal).",
+                    parking: "Free. Small lot at Tower Fall store.",
+                    description: "132-foot waterfall framed by volcanic rock spires (towers). Named by the 1870 Washburn Expedition. Easy 2-minute walk to overlook.",
+                    food: "Tower Fall General Store — ice cream, cold drinks, snacks. Roosevelt Lodge Dining Room (10 min west): burgers, steaks, casual Western atmosphere.",
+                    tip: "Overlook is 2 min from parking. Trail to the waterfall's base exists but is steep and strenuous — only if you have energy.",
+                    hack: "Roosevelt Lodge's Old West Dinner Cookout: horseback or wagon ride to a steak dinner cookout in the woods. One of the most unique Yellowstone experiences.",
+                    costs: [
+                        { item: "Tower Fall viewpoint", price: "Free" },
+                        { item: "Roosevelt Cookout (horseback)", price: "~$100-140/adult", verify: true },
+                        { item: "Roosevelt Cookout (wagon)", price: "~$70-90/adult", verify: true }
+                    ],
+                    activities: "Roosevelt Old West Dinner Cookout — must book in advance at yellowstonenationalparklodges.com. Horseback trail rides from Roosevelt Corral also available (~$55-95 for 1-2 hr rides).",
+                    nuisances: "Dunraven Pass (road from Canyon to Tower) is windy with sharp curves. Can be slow behind RVs. Watch for bears on the pass.",
+                    verify: "Verify 2026 cookout pricing and availability at yellowstonenationalparklodges.com — books out weeks ahead.",
+                    tags: ["food", "photo", "hack"]
+                },
+                {
+                    name: "Lamar Valley",
+                    coords: [44.8981, -110.2281],
+                    time: "1-2 hrs",
+                    hours: "24/7 (road-based viewing). Best: dawn and dusk.",
+                    parking: "Free. Multiple pullouts along the road. Slough Creek pullout is popular for wolf watching.",
+                    description: "America's Serengeti — best wolf and wildlife watching in the park. Wide valley with massive bison herds, wolf packs (Junction Butte, others), grizzly bears, pronghorn, coyotes, and elk.",
+                    food: "No food in valley. Pack dinner. After: Beartooth Cafe (Main St, Cooke City, MT) or Prospector Restaurant (210 US-212, Silver Gate/Cooke City).",
+                    tip: "Best at sunrise (5-7 AM) and sunset (7-9 PM). Drive the full valley slowly. Key pullouts: Slough Creek trailhead area, Lamar Buffalo Ranch, and the river confluence area.",
+                    hack: "WOLF WATCHING: Look for clusters of people with tripods and spotting scopes — they've spotted wolves. Ask them! Rangers with NPS scopes often set up near Slough Creek and will share views. Junction Butte Pack is most regularly spotted. The Yellowstone Wolf Project posts sighting reports.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Wolf watching (free, bring optics). Slough Creek Trail is popular for fishing (permit required). Yellowstone Forever offers guided wildlife tours with professional scopes — check yellowstone.org for pricing.",
+                    nuisances: "Bison on road, especially at dusk. The drive from Lamar to Island Park is LONG (~2.5 hrs via NE entrance through Cooke City). Plan accordingly. Very limited cell service.",
+                    verify: "Yellowstone Forever guided Lamar Valley tours — check yellowstone.org for 2026 schedule and pricing. Historically ~$100-150/person for half-day.",
+                    tags: ["wildlife", "hack", "photo"]
+                }
+            ]
+        },
+        {
+            title: "Grand Teton",
+            subtitle: "Mountain Lakes & Iconic Views",
+            stats: { miles: "281 mi", driving: "6.5-7 hrs", stops: "5 stops" },
+            start: { name: "Cabin Village, Island Park", coords: [44.4211, -111.3742] },
+            end: { name: "Cabin Village, Island Park", coords: [44.4211, -111.3742] },
+            stops: [
+                {
+                    name: "Jackson Lake",
+                    coords: [43.8553, -110.6614],
+                    time: "30-45 min",
+                    hours: "24/7. Signal Mountain Lodge: typically mid-May to mid-Oct. Jackson Lake Lodge: late May to early Oct.",
+                    parking: "Free at all pullouts, Signal Mountain, and Jackson Lake Lodge.",
+                    description: "Massive glacial lake (25,540 acres) with stunning Teton reflections. Drive Signal Mountain Summit Road for aerial views.",
+                    food: "Signal Mountain Lodge — Peaks Restaurant (lakeside breakfast, eggs Benedict with lake views). Trapper Grill for casual. Jackson Lake Lodge Mural Room (upscale, huge window wall).",
+                    tip: "Signal Mountain Summit Road: 5-mile drive to the top, 360-degree views of lake, Tetons, and valley. One of the best panoramas in the park.",
+                    hack: "Jackson Lake Lodge's lobby has a famous 60-foot wall of windows framing the Tetons — free to walk in and enjoy. Get coffee at the Blue Heron Lounge and just stare. Colter Bay has kayak/canoe rentals.",
+                    costs: [
+                        { item: "Signal Mountain drive", price: "Free" },
+                        { item: "Kayak rental (Colter Bay)", price: "~$25-40/hr", verify: true },
+                        { item: "Breakfast at Signal Mtn Lodge", price: "~$15-25/person", verify: true }
+                    ],
+                    activities: "Kayak/canoe rentals at Colter Bay Village. Signal Mountain Summit Road drive. Boat launch at Signal Mountain (bring your own or rent).",
+                    nuisances: "Signal Mountain Road can have slow traffic (narrow, winding). Jackson Lake water is very cold — not ideal for swimming.",
+                    verify: "Colter Bay kayak rental availability and pricing for 2026. Check gtlc.com (Grand Teton Lodge Company).",
+                    tags: ["food", "photo", "hack"]
+                },
+                {
+                    name: "Oxbow Bend",
+                    coords: [43.8636, -110.5403],
+                    time: "20-30 min",
+                    hours: "24/7. Best before 8 AM for reflections.",
+                    parking: "Free. Roadside pullout (east side of Hwy 89/191). Small but usually available.",
+                    description: "Classic Teton reflection spot. The Snake River bends creating mirror-still water with Mt. Moran (12,605 ft) towering behind. One of the most photographed spots in the National Park System.",
+                    food: null,
+                    tip: "THE iconic Grand Teton photo. Mirror reflections happen before 8 AM when wind is calm. Mt. Moran's Skillet Glacier and Falling Ice Glacier are visible on the face.",
+                    hack: "Shoot from south shoulder of road facing north. Moose, bald eagles, great blue herons, and American white pelicans frequent this bend. Any wind kills reflections — if breezy, come back later.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Photography. Wildlife watching (moose are common at dawn in the willows).",
+                    nuisances: "Mosquitoes can be intense here in early summer (near standing water). Bring bug spray. Limited parking — if full, drive 100 yards east for additional shoulder space.",
+                    verify: null,
+                    tags: ["photo", "wildlife", "hack"]
+                },
+                {
+                    name: "Snake River Overlook",
+                    coords: [43.7571, -110.6029],
+                    time: "15 min",
+                    hours: "24/7",
+                    parking: "Free. Small paved lot (fits ~15 cars).",
+                    description: "Where Ansel Adams captured his famous 1942 photograph 'The Tetons — Snake River.' The river S-curves through the valley with the full Teton Range behind.",
+                    food: null,
+                    tip: "Quick pullover — 5 min to see and photograph. Trees have grown since 1942 but it's still gorgeous. Interpretive sign shows Adams' original image for comparison.",
+                    hack: "Schwabacher Landing (short dirt road 1 mile south) gives river-level Teton reflections with beaver ponds — a hidden gem with fewer people. Worth the 20-min detour if time allows.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Photography only at this overlook. Schwabacher Landing has a short walking trail along the river.",
+                    nuisances: "Small lot fills quickly. If full, there's shoulder parking ~100 yards south. Quick stop so turnover is fast.",
+                    verify: null,
+                    tags: ["photo", "tip"]
+                },
+                {
+                    name: "Jenny Lake",
+                    coords: [43.7530, -110.7226],
+                    time: "1.5-2 hrs",
+                    hours: "24/7 (lake/trails). Jenny Lake Boat Shuttle: typically mid-May to late Sept, 7 AM - 7 PM.",
+                    parking: "Free. Jenny Lake parking area fills by 9-10 AM in summer. Overflow lot available.",
+                    description: "Crown jewel of Grand Teton. Crystal-clear alpine lake (250 ft deep) at the base of the Cathedral Group peaks (Grand Teton 13,775 ft, Teewinot, Mt. Owen). Boat shuttle crosses to Hidden Falls.",
+                    food: "Jenny Lake Lodge — upscale prix fixe dinner (reservations required months ahead). Dornan's in Moose Junction (12 mi south): pizza, wine bar, craft beer on a deck facing the Tetons.",
+                    tip: "Take the boat shuttle to hike to Hidden Falls (0.5 mi from west shore dock) and Inspiration Point (1 mi, 400 ft elevation gain). Total: 2 mi with the shuttle. Views from Inspiration Point are peak Grand Teton.",
+                    hack: "Shuttle line grows after 10 AM. Arrive by 9 or hike the west shore trail (2 mi to falls, beautiful but longer). String Lake (5 min north, connected) is the locals' swimming spot — warmer, crystal clear, free, and less crowded.",
+                    costs: [
+                        { item: "Jenny Lake Boat Shuttle (round trip)", price: "~$20/adult", verify: true },
+                        { item: "Jenny Lake Boat Shuttle (one way)", price: "~$12/adult", verify: true },
+                        { item: "Dornan's pizza + beer", price: "~$20-30/person" },
+                        { item: "Jenny Lake Lodge dinner", price: "~$90-120/person", verify: true }
+                    ],
+                    activities: "Boat shuttle to Hidden Falls + Inspiration Point hike. Kayak/canoe rentals at Jenny Lake Boating. Swimming at String Lake (free). Multi-pitch rock climbing on the Tetons (guide required for most routes).",
+                    nuisances: "Parking fills early (by 9-10 AM). No dogs on trails or shuttle. Water is cold (50°F). Afternoon thunderstorms common — be off exposed trails by 2 PM.",
+                    verify: "Verify 2026 Jenny Lake Boating shuttle prices at jennylakeboating.com. Prices have increased yearly.",
+                    tags: ["food", "hack", "photo", "tip"]
+                },
+                {
+                    name: "Mormon Row Historic District",
+                    coords: [43.6641, -110.6699],
+                    time: "30-45 min",
+                    hours: "24/7 (open field/road)",
+                    parking: "Free. Dirt pullout area along Mormon Row road (Antelope Flats Rd).",
+                    description: "Historic 1890s homestead district. T.A. Moulton Barn and John Moulton Barn with the full Teton Range as backdrop. Listed on the National Register of Historic Places.",
+                    food: "After (in Jackson, 15 min): Snake River Brewing (265 S Millward St — Pako's IPA + bison nachos). The Bird (160 N Center St — cocktails + burgers). Persephone Bakery (145 E Broadway — French pastries for morning). Bin22 wine bar (200 W Broadway).",
+                    tip: "T.A. Moulton Barn is the more famous one (full Teton Range behind it). John Moulton Barn is 100 yards east. Both are stunning at golden hour. Drive the full Mormon Row road for all structures.",
+                    hack: "SUNSET: Stand south of T.A. Moulton barn, shoot north — Tetons glow pink/orange behind weathered wood. Bison herds graze in the foreground fields at dusk. Sunrise is equally spectacular (Tetons front-lit pink).",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Photography. Wildlife viewing (bison, pronghorn common in the fields). Short walk between the barns.",
+                    nuisances: "Dirt road can be rutted after rain. Mosquitoes in tall grass. Bison in the fields — maintain 25-yard distance. No restrooms.",
+                    verify: null,
+                    tags: ["photo", "food", "wildlife", "hack"]
+                }
+            ]
+        },
+        {
+            title: "Lower Loop Geysers",
+            subtitle: "Geothermal Wonders Day",
+            stats: { miles: "260 mi", driving: "6-6.5 hrs", stops: "7 stops" },
+            start: { name: "Cabin Village, Island Park", coords: [44.4211, -111.3742] },
+            end: { name: "Bozeman Airport", coords: [45.7775, -111.1530] },
+            stops: [
+                {
+                    name: "Grand Prismatic Spring",
+                    coords: [44.5251, -110.8382],
+                    time: "45 min - 1 hr",
+                    hours: "24/7. Fairy Falls trailhead parking: typically accessible dawn-dusk.",
+                    parking: "Free. Midway Geyser Basin lot (for boardwalk). Fairy Falls trailhead lot (for overlook trail) — 1 mile south. BOTH fill by 10 AM.",
+                    description: "Largest hot spring in the US (370 ft diameter, 160°F). Third largest in the world. Rainbow rings caused by heat-loving bacteria (thermophiles) at different temperatures create otherworldly colors.",
+                    food: null,
+                    tip: "TWO experiences: (1) Midway Geyser Basin boardwalk for ground-level steam and scale, (2) Grand Prismatic Overlook Trail from Fairy Falls trailhead (1.6 mi RT, 100 ft gain, easy) for the aerial rainbow view.",
+                    hack: "THE OVERLOOK TRAIL IS MANDATORY — it's the only way to see the full rainbow from above. The boardwalk alone is honestly underwhelming because you're too close. Park at Fairy Falls trailhead. Warm, windless days = vivid color. Cold mornings = steam obscures everything.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Boardwalk viewing. Overlook Trail hike (1.6 mi RT). Photography.",
+                    nuisances: "Parking fills by 9:30-10 AM — arrive EARLY. Boardwalk is crowded midday. Steam from the spring can fog cameras. On cool mornings, steam can completely obscure the colors.",
+                    verify: "Fairy Falls trailhead may have seasonal closures for bear management — check NPS alerts.",
+                    tags: ["photo", "hack", "tip"]
+                },
+                {
+                    name: "Old Faithful & Upper Geyser Basin",
+                    coords: [44.4605, -110.8281],
+                    time: "1.5-2 hrs",
+                    hours: "24/7 (geysers). Old Faithful Visitor Center: 8 AM - 8 PM (summer). Old Faithful Inn: seasonal (late April - mid Oct).",
+                    parking: "Free. Large lot but fills midday (11 AM - 3 PM). Overflow lot available.",
+                    description: "World's most famous geyser — erupts every 60-110 min (avg ~92 min), shooting 130-180 ft. But the surrounding Upper Geyser Basin has the densest concentration of geysers on Earth (150+ in 1 sq mi).",
+                    food: "Old Faithful Inn Dining Room — eat inside the world's largest log structure (built 1903-04, National Historic Landmark). Reserve ahead! Bear Paw Deli (in Snow Lodge) for quick sandwiches. Geyser Grill for cafeteria-style.",
+                    tip: "Check next predicted eruption at visitor center or NPS Yellowstone app. Arrive 30 min early for seating. After OF, walk the Upper Geyser Basin boardwalk loop (1.5 mi): Morning Glory Pool, Castle Geyser, Grand Geyser, Riverside Geyser, Daisy Geyser.",
+                    hack: "Grand Geyser erupts every 6-8 hrs and shoots 200+ ft (taller than OF). If prediction board shows it's within your window, WAIT — it's a fountain-type eruption and many regulars say it's more impressive than OF. Old Faithful Inn 2nd-floor balcony: open to public, elevated eruption view without crowds.",
+                    costs: [
+                        { item: "Old Faithful viewing", price: "Free" },
+                        { item: "Inn Dining Room dinner", price: "~$30-50/person", verify: true },
+                        { item: "Bear Paw Deli lunch", price: "~$12-18/person" }
+                    ],
+                    activities: "Geyser viewing (free). Old Faithful Inn tour (free, self-guided — just walk in). Upper Geyser Basin boardwalk loop (free, 1.5 mi). Firehole River swimming hole (free, 1 mi south on Firehole Canyon Drive — check if open).",
+                    nuisances: "CROWDED. Peak times (11 AM - 3 PM) mean standing room only for OF eruption. Parking lot circling can take 15+ min midday. Inn dining needs reservations.",
+                    verify: "Old Faithful Inn Dining Room reservations — book at yellowstonenationalparklodges.com. Firehole Swimming Area may be closed for safety — check NPS alerts.",
+                    tags: ["food", "hack", "photo", "tip"]
+                },
+                {
+                    name: "Fountain Paint Pots",
+                    coords: [44.5502, -110.8115],
+                    time: "30 min",
+                    hours: "24/7 (outdoor boardwalk)",
+                    parking: "Free. Small lot, rarely full.",
+                    description: "All four thermal feature types in one easy 0.5-mile loop: geysers (Clepsydra, Fountain), hot springs, mud pots (red/pink bubbling clay), and fumaroles (steam vents).",
+                    food: null,
+                    tip: "Red Spouter changes between fumarole and mud pot depending on season/water table. Clepsydra Geyser erupts almost non-stop. Fountain Geyser erupts every 4-14 hrs (spectacular if you catch it).",
+                    hack: "Less crowded than the famous spots. Mud pots are most 'thick' and bubbly in late summer when water levels drop. A hidden gem most tour buses skip. Great for understanding Yellowstone's geology in one compact loop.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: null,
+                    nuisances: "Boardwalk only. Some sections can be slippery when wet. Modest sulfur smell.",
+                    verify: null,
+                    tags: ["tip"]
+                },
+                {
+                    name: "West Thumb Geyser Basin",
+                    coords: [44.4164, -110.5743],
+                    time: "30-45 min",
+                    hours: "24/7 (outdoor). West Thumb Info Station: typically 9 AM - 5 PM (seasonal).",
+                    parking: "Free. Lot on the lake shore.",
+                    description: "Geothermal features directly on Yellowstone Lake's shoreline. Hot springs empty into the cold lake, creating bizarre temperature contrasts. Named because the bay is shaped like a thumb.",
+                    food: "Grant Village Restaurant (2 mi south, on the lake): full menu, lake views. West Thumb convenience store for road snacks and drinks.",
+                    tip: "Fishing Cone: early visitors literally cooked fish in this hot spring while standing on the cold lake shore (now illegal!). Abyss Pool has an impossibly deep blue color. Lakeshore Geyser occasionally erupts from the lake itself.",
+                    hack: "Quick, uncrowded gem that most people drive past. The lakeside setting makes it unique — nowhere else in Yellowstone do thermal features meet a lake. Afternoon light sparkles off the lake beautifully.",
+                    costs: [
+                        { item: "Access", price: "Free" },
+                        { item: "Grant Village dinner", price: "~$20-40/person", verify: true }
+                    ],
+                    activities: "Boardwalk loop (0.5 mi). Photography. Fishing at Grant Village marina (permit required).",
+                    nuisances: "Windy on the lake. Can be chilly even in summer. Quick stop so it doesn't eat too much Day 3 time.",
+                    verify: null,
+                    tags: ["photo", "tip", "food"]
+                },
+                {
+                    name: "Biscuit Basin",
+                    coords: [44.4856, -110.8516],
+                    time: "20 min",
+                    hours: "24/7",
+                    parking: "Free. Small lot off Grand Loop Road, 2 miles north of Old Faithful.",
+                    description: "Small but stunning. Sapphire Pool is one of the bluest thermal features in the park. Short boardwalk with several springs. Also the trailhead for Mystic Falls.",
+                    food: null,
+                    tip: "Sapphire Pool's intense blue is worth the stop alone. Jewel Geyser erupts every 7-10 min (small but reliable). 15-min boardwalk loop.",
+                    hack: "Mystic Falls Trail starts here (2.4 mi RT, moderate, 70-ft waterfall) — has 1/10th the crowds of other park waterfalls. If you have 45 extra min and energy, it's a secret gem.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Boardwalk loop. Mystic Falls hike (2.4 mi RT, 100 ft gain).",
+                    nuisances: "Biscuit Basin has experienced ground uplift/changes in recent years. Some features or boardwalk sections may be temporarily closed.",
+                    verify: "Check if Biscuit Basin boardwalk is fully open — it was temporarily closed in 2024 due to hydrothermal explosion. Verify current status on NPS site.",
+                    tags: ["photo", "hack"]
+                },
+                {
+                    name: "Black Sand Basin",
+                    coords: [44.4685, -110.8427],
+                    time: "15-20 min",
+                    hours: "24/7",
+                    parking: "Free. Small lot, 0.5 mi NW of Old Faithful.",
+                    description: "Tiny thermal area named for obsidian sand (volcanic glass fragments). Emerald Pool glows green from algae and bacteria. Cliff Geyser erupts from the bank of Iron Spring Creek.",
+                    food: null,
+                    tip: "Very quick 10-15 min boardwalk loop. Emerald Pool and Cliff Geyser (erupts from the creek bank) are the highlights. Sunset Lake has orange-rimmed bacteria mats.",
+                    hack: "WALK here from Old Faithful parking via the 0.5 mi paved trail through the lodgepole pine forest — faster than driving and re-parking. Most people don't realize it's connected on foot.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Short boardwalk. Can combine with walk from/to Old Faithful.",
+                    nuisances: "The obsidian sand is sharp — don't touch or collect it (illegal to take geological specimens from the park).",
+                    verify: null,
+                    tags: ["tip", "hack"]
+                },
+                {
+                    name: "Firehole Lake Drive",
+                    coords: [44.5655, -110.8097],
+                    time: "20-30 min",
+                    hours: "Daylight hours. One-way road, typically open late May - early Nov.",
+                    parking: "Free. Pullouts along the one-way road.",
+                    description: "One-way scenic drive off Grand Loop Road. Features: Great Fountain Geyser (erupts every 9-15 hrs, 75-150 ft — many say it's more beautiful than Old Faithful), White Dome Geyser (erupts every 15-30 min), and Firehole Lake.",
+                    food: null,
+                    tip: "Great Fountain Geyser predictions are posted at Old Faithful Visitor Center and on the NPS app. If it's within 1-2 hrs of your arrival, strongly consider waiting. White Dome erupts frequently — you'll likely catch it.",
+                    hack: "One-way road off the main highway — easy to miss! The turnoff is between Madison and Old Faithful. Great Fountain's eruption reflecting in surrounding pools at golden hour is world-class photography. It erupts for 45-60 min in bursts.",
+                    costs: [{ item: "Access", price: "Free" }],
+                    activities: "Drive-through viewing with pullouts. Photography.",
+                    nuisances: "One-way only — if you miss the turn, you have to continue to the next junction and double back. Waiting for Great Fountain can be unpredictable (prediction window is +/- 2 hrs).",
+                    verify: null,
+                    tags: ["photo", "hack"]
+                }
+            ]
+        }
+    ]};
+
+    // Plan B mirrors Plan A structure with optimized order (keeping it DRY by referencing same stop data with reordering)
+    const planB = { days: [
+        {
+            title: "Upper Loop + Canyon",
+            subtitle: "Optimized: No Backtracking, Sunset at Lamar",
+            stats: { miles: "284 mi", driving: "7.5-8.5 hrs", stops: "7 stops" },
+            start: { name: "C'mon Inn, Bozeman", coords: [45.6770, -111.0429] },
+            end: { name: "Cabin Village, Island Park", coords: [44.4211, -111.3742] },
+            stops: [
+                planA.days[0].stops[0], // Mammoth
+                planA.days[0].stops[1], // Norris
+                { ...planA.days[0].stops[2], name: "Canyon Area (Artist Pt + Brink + Lookout)", description: "All three viewpoints clustered within a 5-min drive. Grand Canyon of Yellowstone: 1,000 ft deep, golden walls, thundering 308-ft Lower Falls. Optimized: hit all three without moving your car far." },
+                planA.days[0].stops[4], // Hayden
+                planA.days[0].stops[5], // Mud Volcano
+                planA.days[0].stops[7], // Tower Fall
+                { ...planA.days[0].stops[8], name: "Lamar Valley (Sunset Wildlife)", time: "1.5-2 hrs (timed for sunset)", description: "Saved for LAST because wildlife is most active at sunset. The Serengeti of North America. Wolves, grizzlies, bison, pronghorn, coyotes. Summer sunset is ~9 PM giving you hours of golden viewing time." }
+            ]
+        },
+        {
+            title: "Grand Teton",
+            subtitle: "Optimized: Oxbow First for Morning Reflections",
+            stats: { miles: "281 mi", driving: "6.5-7 hrs", stops: "5 stops" },
+            start: { name: "Cabin Village, Island Park", coords: [44.4211, -111.3742] },
+            end: { name: "Cabin Village, Island Park", coords: [44.4211, -111.3742] },
+            stops: [
+                { ...planA.days[1].stops[1], name: "Oxbow Bend (Morning Reflections)", time: "30 min (arrive early!)", description: "FIRST because morning + still water = perfect mirror reflections of Mt. Moran. This is THE iconic Grand Teton photograph. Leave Island Park by 5:30-6:00 AM for golden hour arrival." },
+                planA.days[1].stops[0], // Jackson Lake
+                planA.days[1].stops[2], // Snake River
+                planA.days[1].stops[3], // Jenny Lake
+                { ...planA.days[1].stops[4], name: "Mormon Row (Sunset)", time: "45 min (golden hour)", description: "Saved for LAST for golden hour light. T.A. Moulton Barn + John Moulton Barn with Tetons glowing pink/orange at sunset. Bison often graze in foreground." }
+            ]
+        },
+        {
+            title: "Lower Loop Geysers (Clockwise)",
+            subtitle: "Optimized: Clean Loop, No Backtracking",
+            stats: { miles: "260 mi", driving: "6-6.5 hrs", stops: "7 stops" },
+            start: { name: "Cabin Village, Island Park", coords: [44.4211, -111.3742] },
+            end: { name: "Bozeman Airport", coords: [45.7775, -111.1530] },
+            stops: [
+                planA.days[2].stops[6], // Firehole Lake Drive
+                planA.days[2].stops[2], // Fountain Paint Pots
+                planA.days[2].stops[0], // Grand Prismatic
+                planA.days[2].stops[1], // Old Faithful
+                planA.days[2].stops[5], // Black Sand Basin
+                planA.days[2].stops[4], // Biscuit Basin
+                planA.days[2].stops[3], // West Thumb
+            ]
+        }
+    ]};
+
+    // ===== STATE =====
+    let currentPlan = 'A';
+    let currentDayFilter = 'all';
+    let mapMarkers = [];
+    let mapPolylines = [];
+    let sheetExpanded = false;
+
+    function switchPlan(plan) {
+        currentPlan = plan;
+        document.querySelectorAll('.plan-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.plan-btn')[plan === 'A' ? 0 : 1].classList.add('active');
+        currentDayFilter = 'all'; updateDayPills(); render();
+    }
+    function getPlanData() { return currentPlan === 'A' ? planA : planB; }
+    function filterDay(day) { currentDayFilter = day; updateDayPills(); render(); }
+    function updateDayPills() {
+        document.querySelectorAll('.day-pill').forEach(p => p.classList.remove('active'));
+        if (currentDayFilter === 'all') document.querySelector('.day-pill.all').classList.add('active');
+        else document.querySelector(`.day-pill.d${parseInt(currentDayFilter)+1}`).classList.add('active');
+    }
+
+    // ===== RENDER =====
+    function render() { renderMap(); renderSheet(); }
+
+    function renderMap() {
+        mapMarkers.forEach(m => map.removeLayer(m));
+        mapPolylines.forEach(p => map.removeLayer(p));
+        mapMarkers = []; mapPolylines = [];
+        const data = getPlanData(); const bounds = [];
+
+        data.days.forEach((day, dayIdx) => {
+            if (currentDayFilter !== 'all' && currentDayFilter !== String(dayIdx)) return;
+            const color = dayColors[dayIdx];
+            const routeCoords = [day.start.coords];
+
+            const sm = L.marker(day.start.coords, { icon: createHotelIcon(color) })
+                .bindPopup(`<div class="popup-mini"><h3>${day.start.name}</h3><p>Day ${dayIdx+1} Start</p></div>`).addTo(map);
+            mapMarkers.push(sm); bounds.push(day.start.coords);
+
+            day.stops.forEach((stop, stopIdx) => {
+                const marker = L.marker(stop.coords, { icon: createIcon(color, stopIdx+1) })
+                    .bindPopup(`<div class="popup-mini"><h3>${stop.name}</h3><p>${stop.time}</p><div class="popup-tap">Tap for full details</div></div>`).addTo(map);
+                marker.on('click', () => openDetail(dayIdx, stopIdx));
+                mapMarkers.push(marker); routeCoords.push(stop.coords); bounds.push(stop.coords);
+            });
+
+            if (day.end.coords[0] !== day.start.coords[0] || day.end.coords[1] !== day.start.coords[1]) {
+                const em = L.marker(day.end.coords, { icon: createHotelIcon(color) })
+                    .bindPopup(`<div class="popup-mini"><h3>${day.end.name}</h3><p>Day ${dayIdx+1} End</p></div>`).addTo(map);
+                mapMarkers.push(em); bounds.push(day.end.coords);
+            }
+            routeCoords.push(day.end.coords);
+
+            mapPolylines.push(L.polyline(routeCoords, { color, weight: 4, opacity: 0.85, smoothFactor: 1.5, lineCap: 'round' }).addTo(map));
+            mapPolylines.push(L.polyline(routeCoords, { color: 'white', weight: 2, opacity: 0.35, dashArray: '6,12', smoothFactor: 1.5 }).addTo(map));
+        });
+
+        // Gas station markers
+        if (currentDayFilter === 'all' || true) {
+            gasStations.forEach(gs => {
+                const gm = L.marker(gs.coords, { icon: createGasIcon() })
+                    .bindPopup(`<div class="popup-mini"><h3>&#9981; ${gs.name}</h3><p>${gs.address}</p><p style="margin-top:4px;color:#ffd166;font-size:0.7rem;">${gs.note}</p></div>`).addTo(map);
+                mapMarkers.push(gm); bounds.push(gs.coords);
+            });
+        }
+
+        if (bounds.length > 0) map.fitBounds(bounds, { padding: [60, 60], maxZoom: 11 });
+    }
+
+    function renderSheet() {
+        const data = getPlanData();
+        const headerEl = document.getElementById('sheetHeader');
+        const contentEl = document.getElementById('sheetContent');
+        const progress = getProgress();
+
+        if (currentDayFilter === 'all') {
+            headerEl.innerHTML = `<div><div class="sheet-title">Plan ${currentPlan} ${currentPlan === 'A' ? '- Original' : '- Optimized'}</div><div class="sheet-subtitle">3 Days &bull; Yellowstone + Grand Teton</div><div class="progress-bar"><div class="progress-fill" style="width:${(progress.done/progress.total)*100}%"></div></div><div class="progress-text">${progress.done}/${progress.total} stops completed</div></div>`;
+        } else {
+            const day = data.days[parseInt(currentDayFilter)];
+            headerEl.innerHTML = `<div><div class="sheet-title">Day ${parseInt(currentDayFilter)+1}: ${day.title}</div><div class="sheet-subtitle">${day.subtitle}</div></div><div class="sheet-stats"><span class="sheet-stat">${day.stats.miles}</span><span class="sheet-stat">${day.stats.stops}</span></div>`;
+        }
+
+        let html = '';
+        data.days.forEach((day, dayIdx) => {
+            if (currentDayFilter !== 'all' && currentDayFilter !== String(dayIdx)) return;
+            if (currentDayFilter === 'all') html += `<div style="font-size:0.72rem;font-weight:700;color:${dayColors[dayIdx]};margin:16px 0 8px;letter-spacing:0.5px;">DAY ${dayIdx+1} — ${day.title.toUpperCase()}</div>`;
+
+            day.stops.forEach((stop, stopIdx) => {
+                const tagLabels = { food:'Eats', tip:'Tip', photo:'Photo', wildlife:'Wildlife', hack:'Hack', gas:'Gas', cost:'Cost' };
+                const tags = stop.tags.map(t => `<span class="tag tag-${t}">${tagLabels[t]}</span>`).join('');
+                const done = isCompleted(currentPlan, dayIdx, stopIdx);
+
+                html += `<div class="stop-card day-${dayIdx+1} ${done ? 'completed' : ''}" onclick="openDetail(${dayIdx},${stopIdx})">
+                    <div class="stop-card-header"><div class="stop-num">${stopIdx+1}</div><div class="stop-card-title">${stop.name}</div><div class="stop-card-time">${stop.time}</div></div>
+                    <div class="stop-card-desc">${stop.description}</div>
+                    <div class="stop-card-tags">${tags}${stop.verify ? '<span class="tag" style="background:rgba(255,209,102,0.12);color:#ffd166;">Verify</span>' : ''}</div>
+                </div>`;
+            });
+        });
+
+        html += `<div class="tips-section"><div class="tips-title">Essential Trip Hacks</div>
+            <div class="tip-mini-card"><strong>Leave by 6:00 AM</strong> every day. Parking lots fill by 9 AM. Best wildlife + light is early.</div>
+            <div class="tip-mini-card"><strong>Download NPS Yellowstone App</strong> before entering (offline maps + geyser predictions). Cell service is minimal in-park.</div>
+            <div class="tip-mini-card"><strong>Gas up every morning</strong> at Island Park or West Yellowstone. In-park gas is $1-2/gal more expensive and stations are far apart.</div>
+            <div class="tip-mini-card"><strong>Bear spray: $50</strong> at park stores, or rent at Bear Aware (211 Yellowstone Ave, West Yellowstone) for ~$12/day.</div>
+            <div class="tip-mini-card"><strong>Pack lunches + water.</strong> In-park restaurants have 30-60 min waits midday. Sandwich at a scenic pullout is the move.</div>
+            <div class="tip-mini-card"><strong>Layers are critical.</strong> Mornings: 30-40°F. Afternoons: 75°F+. Rain gear always in your daypack.</div>
+            <div class="tip-mini-card"><strong>100 yards from bears/wolves, 25 yards from everything else.</strong> These are enforced with fines. Use binoculars + telephoto.</div>
+            <div class="tip-mini-card"><strong>Altitude: 7,000-8,000 ft.</strong> Drink extra water. You'll get winded faster on trails, especially if from sea level.</div>
+            <div class="tip-mini-card"><strong>Road conditions:</strong> check nps.gov/yell/planyourvisit/roads.htm the morning of each day. Construction delays are common in summer.</div>
+        </div>`;
+
+        contentEl.innerHTML = html;
+    }
+
+    // ===== DETAIL VIEW =====
+    function openDetail(dayIdx, stopIdx) {
+        const data = getPlanData();
+        const stop = data.days[dayIdx].stops[stopIdx];
+
+        document.getElementById('detailTitle').innerHTML = `<h2>${stop.name}</h2><span>Day ${dayIdx+1} &bull; Stop ${stopIdx+1}</span>`;
+
+        let html = `<div class="detail-time-badge">&#9201; ${stop.time}</div>`;
+        if (stop.hours) html += `<div style="font-size:0.73rem;color:var(--text-secondary);margin-bottom:12px;"><strong style="color:var(--text-primary);">Hours:</strong> ${stop.hours}</div>`;
+        if (stop.parking) html += `<div style="font-size:0.73rem;color:var(--text-secondary);margin-bottom:14px;"><strong style="color:var(--text-primary);">Parking:</strong> ${stop.parking}</div>`;
+
+        html += `<div class="detail-desc">${stop.description}</div>`;
+
+        // Costs
+        if (stop.costs && stop.costs.length > 0) {
+            html += `<div class="detail-section cost"><h4>&#128176; Costs & Fees</h4>`;
+            stop.costs.forEach(c => {
+                html += `<div class="cost-line"><span class="cost-label">${c.item}</span><span class="cost-value ${c.price === 'Free' ? 'free' : ''} ${c.verify ? 'verify' : ''}">${c.price}${c.verify ? ' <span class="verify-badge">Verify</span>' : ''}</span></div>`;
+            });
+            html += `</div>`;
+        }
+
+        // Food
+        if (stop.food) html += `<div class="detail-section food"><h4>&#127860; Where to Eat</h4><p>${stop.food}</p></div>`;
+
+        // Activities
+        if (stop.activities) html += `<div class="detail-section info"><h4>&#127946; Activities & Experiences</h4><p>${stop.activities}</p></div>`;
+
+        // Pro Tip
+        html += `<div class="detail-section tip"><h4>&#11088; Pro Tip</h4><p>${stop.tip}</p></div>`;
+
+        // Hack
+        html += `<div class="detail-section hack"><h4>&#9889; Insider Hack</h4><p>${stop.hack}</p></div>`;
+
+        // Nuisances
+        if (stop.nuisances) html += `<div class="detail-section alert"><h4>&#9888; Watch Out</h4><p>${stop.nuisances}</p></div>`;
+
+        // Nearest gas
+        const nearest = findNearestGas(stop.coords);
+        if (nearest) {
+            html += `<div class="detail-section gas"><h4>&#9981; Nearest Gas Station</h4><p><strong>${nearest.name}</strong><br>${nearest.address}<br><em>${nearest.note}</em><br><span style="color:var(--text-muted);font-size:0.7rem;">~${nearest.dist} mi away</span></p></div>`;
+        }
+
+        // Verify flag
+        if (stop.verify) {
+            html += `<div style="background:rgba(255,209,102,0.08);border:1px solid rgba(255,209,102,0.2);border-radius:10px;padding:12px;margin-bottom:12px;font-size:0.75rem;color:var(--accent-yellow);"><strong>&#9888; VERIFY BEFORE TRIP:</strong><br>${stop.verify}</div>`;
+        }
+
+        // Navigate button
+        html += `<button class="navigate-btn" onclick="openInMaps(${stop.coords[0]},${stop.coords[1]},'${stop.name.replace(/'/g, "\\'")}')">&#128205; Navigate in Apple/Google Maps</button>`;
+
+        // Complete button
+        const done = isCompleted(currentPlan, dayIdx, stopIdx);
+        html += `<button class="complete-btn ${done ? 'done' : ''}" id="complete-btn" onclick="event.stopPropagation();toggleComplete('${currentPlan}',${dayIdx},${stopIdx})">${done ? '✓ Completed!' : 'Mark as Complete'}</button>`;
+
+        document.getElementById('detailBody').innerHTML = html;
+        document.getElementById('detailOverlay').classList.add('open');
+        map.setView(stop.coords, 13, { animate: true });
+    }
+
+    function findNearestGas(coords) {
+        let min = Infinity, nearest = null;
+        gasStations.forEach(gs => {
+            const d = Math.sqrt(Math.pow(gs.coords[0]-coords[0], 2) + Math.pow(gs.coords[1]-coords[1], 2)) * 69;
+            if (d < min) { min = d; nearest = { ...gs, dist: Math.round(d) }; }
+        });
+        return nearest;
+    }
+
+    function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
+
+    function openInMaps(lat, lng, name) {
+        const enc = encodeURIComponent(name);
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) window.open(`maps://maps.apple.com/?q=${enc}&ll=${lat},${lng}`, '_blank');
+        else window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+    }
+
+    // ===== INFO PANEL =====
+    function openInfoPanel() {
+        const progress = getProgress();
+        document.getElementById('infoPanelBody').innerHTML = `
+            <div class="info-card">
+                <h3>&#127915; Trip Progress</h3>
+                <div class="progress-bar"><div class="progress-fill" style="width:${(progress.done/progress.total)*100}%"></div></div>
+                <p>${progress.done} of ${progress.total} stops completed (Plan ${currentPlan})</p>
+                ${progress.done > 0 ? `<button onclick="if(confirm('Reset all completed stops?')){localStorage.removeItem('ys_completed');render();openInfoPanel();}" style="margin-top:10px;padding:8px 14px;border-radius:8px;border:1px solid var(--accent-red);background:transparent;color:var(--accent-red);font-size:0.75rem;cursor:pointer;">Reset Progress</button>` : ''}
+            </div>
+
+            <div class="info-card">
+                <h3>&#127915; Park Entry Fees</h3>
+                <ul>
+                    <li>Yellowstone + Grand Teton (7-day vehicle pass) <span>$35</span></li>
+                    <li>America the Beautiful Annual Pass (all NPS sites) <span>$80</span></li>
+                    <li>Motorcycle (7-day) <span>$30</span></li>
+                    <li>Individual (hiker/biker, 7-day) <span>$20</span></li>
+                </ul>
+                <p style="margin-top:8px;font-size:0.72rem;color:var(--accent-green);">One pass covers BOTH Yellowstone and Grand Teton (they're connected). Buy at any entrance gate or online at recreation.gov.</p>
+                <div class="verify-note">&#9888; Verify 2026 pricing at nps.gov/yell/planyourvisit/fees.htm — fees may increase annually.</div>
+            </div>
+
+            <div class="info-card">
+                <h3>&#9981; Gas Strategy</h3>
+                <p><strong>Rule: Fill up every morning before entering the park.</strong></p>
+                <ul>
+                    <li>Island Park, ID (your base) <span>Cheapest option</span></li>
+                    <li>West Yellowstone, MT <span>Moderate</span></li>
+                    <li>Gardiner, MT (north entrance) <span>Moderate</span></li>
+                    <li>In-park stations (Canyon, Grant, Mammoth) <span>Most expensive</span></li>
+                </ul>
+                <p style="margin-top:8px;">In-park gas is typically $1-2/gal above gateway town prices. Stations are spread far apart (30-50 mi). Your daily driving is 260-284 mi — one full tank should cover it for most vehicles.</p>
+                <div class="verify-note">&#9888; In-park gas stations are seasonal (typically late May - mid Oct). Verify hours at nps.gov/yell/planyourvisit/gas-stations.htm</div>
+            </div>
+
+            <div class="info-card">
+                <h3>&#128176; Estimated Trip Costs (2 people)</h3>
+                <ul>
+                    <li>Park entry (7-day vehicle) <span>$35</span></li>
+                    <li>Gas (~825 mi @ ~$4-5/gal, ~25 mpg) <span>$130-165</span></li>
+                    <li>Lodging (3 nights, budget varies) <span>Varies</span></li>
+                    <li>Food (mix of restaurants + packed lunches) <span>$150-300</span></li>
+                    <li>Jenny Lake boat shuttle (2 people) <span>~$40</span></li>
+                    <li>Bear spray (1 can, rental or purchase) <span>$12-50</span></li>
+                    <li>Optional: Roosevelt Cookout (2 people, wagon) <span>~$140-180</span></li>
+                    <li>Optional: Yellowstone Forever tour <span>~$200-300</span></li>
+                </ul>
+                <p style="margin-top:8px;font-weight:600;color:var(--accent-green);">Estimated total (excl. lodging & flights): $400-700 for 2 people</p>
+                <div class="verify-note">&#9888; All prices approximate. Verify activity prices closer to trip date. Restaurant prices from 2024/2025 — expect 5-10% increases.</div>
+            </div>
+
+            <div class="info-card">
+                <h3>&#9888; Things to Verify Before Trip</h3>
+                <ul>
+                    <li>Road conditions & closures <span><a href="https://www.nps.gov/yell/planyourvisit/roads.htm" style="color:var(--accent-blue);" target="_blank">NPS Roads</a></span></li>
+                    <li>Biscuit Basin status (closed 2024, may reopen) <span><a href="https://www.nps.gov/yell/planyourvisit/alertsandclosures.htm" style="color:var(--accent-blue);" target="_blank">NPS Alerts</a></span></li>
+                    <li>Jenny Lake boat shuttle prices <span><a href="https://jennylakeboating.com" style="color:var(--accent-blue);" target="_blank">jennylakeboating.com</a></span></li>
+                    <li>Old Faithful Inn dining reservations <span><a href="https://www.yellowstonenationalparklodges.com" style="color:var(--accent-blue);" target="_blank">YNP Lodges</a></span></li>
+                    <li>Roosevelt Cookout availability <span><a href="https://www.yellowstonenationalparklodges.com" style="color:var(--accent-blue);" target="_blank">YNP Lodges</a></span></li>
+                    <li>Park entry fees (current year) <span><a href="https://www.nps.gov/yell/planyourvisit/fees.htm" style="color:var(--accent-blue);" target="_blank">NPS Fees</a></span></li>
+                    <li>Yellowstone Forever tours <span><a href="https://www.yellowstone.org" style="color:var(--accent-blue);" target="_blank">yellowstone.org</a></span></li>
+                    <li>In-park gas station hours <span><a href="https://www.nps.gov/yell/planyourvisit/gas-stations.htm" style="color:var(--accent-blue);" target="_blank">NPS Gas</a></span></li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>&#128680; Local Nuisances & Safety</h3>
+                <p><strong>Wildlife distances (federal law, enforced with fines):</strong></p>
+                <ul>
+                    <li>Bears & wolves <span>100 yards min</span></li>
+                    <li>All other wildlife (bison, elk, etc.) <span>25 yards min</span></li>
+                </ul>
+                <p style="margin-top:10px;"><strong>Common issues:</strong></p>
+                <ul>
+                    <li>Bison jams (traffic blocked 10-30+ min) <span>Daily occurrence</span></li>
+                    <li>Cell service <span>Minimal/none in park</span></li>
+                    <li>Parking (major sites fill 9-10 AM) <span>Arrive early</span></li>
+                    <li>Afternoon thunderstorms <span>Common June-Aug</span></li>
+                    <li>Altitude (7,000-8,000 ft) <span>Hydrate extra</span></li>
+                    <li>Mosquitoes (near water/meadows) <span>Bring DEET spray</span></li>
+                    <li>Thermal ground (paper-thin crust) <span>STAY on boardwalks</span></li>
+                    <li>Construction delays <span>Check roads daily</span></li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>&#128246; Essential Downloads (Get Before Trip)</h3>
+                <ul>
+                    <li>NPS Yellowstone App <span>iOS & Android</span></li>
+                    <li>Offline Google Maps (download YNP area) <span>For navigation</span></li>
+                    <li>Geyser Times app (geyser predictions) <span>iOS & Android</span></li>
+                    <li>AllTrails (offline trail maps) <span>Premium recommended</span></li>
+                </ul>
+            </div>
+        `;
+        document.getElementById('infoPanel').classList.add('open');
+    }
+    function closeInfoPanel() { document.getElementById('infoPanel').classList.remove('open'); }
+
+    // ===== BOTTOM SHEET =====
+    const sheet = document.getElementById('bottomSheet');
+    const handle = document.getElementById('sheetHandle');
+    handle.addEventListener('touchstart', (e) => {});
+    handle.addEventListener('touchmove', (e) => { e.preventDefault(); });
+    handle.addEventListener('touchend', () => { toggleSheet(); });
+    handle.addEventListener('click', toggleSheet);
+    function toggleSheet() {
+        sheetExpanded = !sheetExpanded;
+        sheet.classList.toggle('collapsed', !sheetExpanded);
+        sheet.classList.toggle('expanded', sheetExpanded);
+    }
+
+    // ===== INIT =====
+    render();
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.icon-btn') && !e.target.closest('.layer-menu'))
+            document.getElementById('layerMenu').classList.remove('show');
+    });
+
+    // ===== GEYSER TIMER =====
+    let geyserInterval = null;
+    let geyserEndTime = null;
+
+    function toggleGeyserTimer() { document.getElementById('geyserTimer').classList.toggle('show'); }
+
+    function startGeyserTimer(minutes) {
+        if (geyserInterval) { clearInterval(geyserInterval); geyserInterval = null; }
+        if (!minutes || minutes <= 0) {
+            document.getElementById('timerDisplay').textContent = '--:--';
+            document.getElementById('timerLabel').textContent = 'Timer reset';
+            return;
+        }
+        geyserEndTime = Date.now() + minutes * 60 * 1000;
+        document.getElementById('timerLabel').textContent = `Next eruption in ~${minutes} min`;
+        updateGeyserTimer();
+        geyserInterval = setInterval(updateGeyserTimer, 1000);
+    }
+
+    function updateGeyserTimer() {
+        const remaining = Math.max(0, geyserEndTime - Date.now());
+        const min = Math.floor(remaining / 60000);
+        const sec = Math.floor((remaining % 60000) / 1000);
+        document.getElementById('timerDisplay').textContent = `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+        if (remaining <= 0) {
+            clearInterval(geyserInterval); geyserInterval = null;
+            document.getElementById('timerLabel').textContent = 'ERUPTION TIME! Head to viewing area!';
+            document.getElementById('timerDisplay').style.color = 'var(--accent-red)';
+            if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
+            setTimeout(() => { document.getElementById('timerDisplay').style.color = ''; }, 5000);
+        }
+    }
+
+    // ===== NOTES (per stop, localStorage) =====
+    function getNote(planKey, dayIdx, stopIdx) {
+        try { const notes = JSON.parse(localStorage.getItem('ys_notes') || '{}'); return notes[`${planKey}_${dayIdx}_${stopIdx}`] || ''; } catch { return ''; }
+    }
+    function saveNote(planKey, dayIdx, stopIdx, text) {
+        const notes = JSON.parse(localStorage.getItem('ys_notes') || '{}');
+        if (text.trim()) notes[`${planKey}_${dayIdx}_${stopIdx}`] = text;
+        else delete notes[`${planKey}_${dayIdx}_${stopIdx}`];
+        localStorage.setItem('ys_notes', JSON.stringify(notes));
+    }
+
+    // ===== QUICK PANELS =====
+    function openQuickPanel(type) {
+        const titleEl = document.getElementById('quickPanelTitle');
+        const bodyEl = document.getElementById('quickPanelBody');
+
+        if (type === 'photo') { titleEl.innerHTML = '<h2>Photo Shot List</h2><span>Iconic shots to capture</span>'; bodyEl.innerHTML = getPhotoShotList(); }
+        else if (type === 'packing') { titleEl.innerHTML = '<h2>Packing Checklist</h2><span>Everything you need for the trip</span>'; bodyEl.innerHTML = getPackingChecklist(); }
+        else if (type === 'emergency') { titleEl.innerHTML = '<h2>Emergency Info</h2><span>No cell service? Use this.</span>'; bodyEl.innerHTML = getEmergencyInfo(); }
+        else if (type === 'weather') { titleEl.innerHTML = '<h2>Weather & Sun Times</h2><span>Plan around light & conditions</span>'; bodyEl.innerHTML = getWeatherPanel(); }
+
+        document.getElementById('quickPanel').classList.add('open');
+    }
+    function closeQuickPanel() { document.getElementById('quickPanel').classList.remove('open'); }
+
+    // ===== PHOTO SHOT LIST =====
+    function getPhotoShotList() {
+        const shots = [
+            { name: "Grand Prismatic from Overlook", location: "Fairy Falls Trailhead overlook", day: "Day 3", time: "9-11 AM (warm, low wind for vivid colors)", tip: "Shoot from the wooden platform at the end of the overlook trail. Polarizing filter cuts haze. Include foreground dead trees for scale.", settings: "Wide angle (16-24mm). f/8-11. Polarizer." },
+            { name: "T.A. Moulton Barn at Sunset", location: "Mormon Row, Grand Teton", day: "Day 2", time: "30 min before sunset (golden hour)", tip: "Stand south of barn shooting north. Tetons glow pink/orange. Wait for bison in the foreground fields for a once-in-a-lifetime frame.", settings: "24-70mm. f/8. Low ISO. Tripod for dusk." },
+            { name: "Oxbow Bend Reflection", location: "Hwy 89/191 pullout, Grand Teton", day: "Day 2", time: "Before 8 AM (no wind = mirror water)", tip: "Shoot from south shoulder facing north. Include river bend and full Mt. Moran reflection. Focus 1/3 into scene for max sharpness.", settings: "24-35mm. f/11. Tripod for sharp reflection." },
+            { name: "Lower Falls from Artist Point", location: "South Rim Drive, Canyon Area", day: "Day 1", time: "8-10 AM (morning sun lights canyon wall)", tip: "The classic Yellowstone postcard shot. Include the yellow canyon walls framing the falls. Morning light gives warm tones on the rock.", settings: "35-70mm. f/8. ND filter if too bright." },
+            { name: "Lamar Valley Wildlife (Wolves/Bison)", location: "Slough Creek to Lamar confluence", day: "Day 1", time: "Sunset (7-9 PM, golden light)", tip: "You need 400mm+ for wolves. Bison work at 100-200mm. Shoot at eye level from car window or pullout. Golden backlighting is magic.", settings: "200-600mm. f/5.6-8. High ISO (1600+) for dusk. Fast shutter (1/500+) for movement." },
+            { name: "Old Faithful Eruption", location: "Upper Geyser Basin viewing area", day: "Day 3", time: "Any (erupts every ~92 min)", tip: "Position with sun behind you. The Inn 2nd-floor balcony gives an elevated angle. Burst mode to catch peak height. Include spectators for scale.", settings: "70-200mm. f/8. Fast shutter (1/1000+). Burst mode." },
+            { name: "Jenny Lake & Tetons", location: "Jenny Lake shore or boat dock", day: "Day 2", time: "Morning (calm water, front-lit peaks)", tip: "Use the dock area or walk south along the shore for reflections. Cathedral Group (Grand, Teewinot, Owen) towers above.", settings: "16-35mm. f/11. Polarizer for water clarity." },
+            { name: "Brink of Lower Falls (Action)", location: "North Rim, Canyon", day: "Day 1", time: "Any (mist gives drama anytime)", tip: "The roaring power shot. You'll be soaked in mist — protect camera with ziplock or rain sleeve. The sheer power at the edge is incredible to convey.", settings: "16-24mm. Waterproof camera cover. Fast shutter to freeze mist or slow (1/4s) to blur water." },
+            { name: "Mammoth Terraces (Abstract)", location: "Lower Terraces boardwalk", day: "Day 1", time: "Early morning (fewer people, soft light)", tip: "Get close-up abstracts of the travertine formations. The colors (white, orange, brown) and flowing water patterns make incredible textures.", settings: "70-200mm for compression. f/5.6-8. Look for leading lines in the terraces." },
+            { name: "Snake River Overlook (Ansel Adams)", location: "Snake River Overlook pullout", day: "Day 2", time: "Early morning or golden hour", tip: "Recreate the famous 1942 Ansel Adams shot. Trees have grown but the S-curve river with Tetons is still stunning. B&W conversion works beautifully.", settings: "50-85mm (Adams used similar). f/16 for deep DOF. Consider B&W processing." }
+        ];
+
+        let html = '<p style="font-size:0.73rem;color:var(--text-muted);margin-bottom:16px;">The 10 must-capture shots of your trip. Tap the checkboxes as you get each one!</p>';
+        shots.forEach((shot, i) => {
+            const checked = getPackCheck('photo_' + i);
+            html += `<div class="shot-card">
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                    <div class="check-box ${checked ? 'checked' : ''}" onclick="togglePackCheck('photo_${i}');this.classList.toggle('checked');"></div>
+                    <div style="flex:1;">
+                        <h4>${shot.name}</h4>
+                        <div class="shot-meta">${shot.day} &bull; ${shot.time}</div>
+                        <p><strong>Location:</strong> ${shot.location}</p>
+                        <p style="margin-top:4px;">${shot.tip}</p>
+                        <p style="margin-top:4px;color:var(--accent-purple);"><strong>Settings:</strong> ${shot.settings}</p>
+                    </div>
+                </div>
+            </div>`;
+        });
+        return html;
+    }
+
+    // ===== PACKING CHECKLIST =====
+    function getPackingChecklist() {
+        const categories = {
+            "ESSENTIALS": [
+                "Park pass (buy at gate or recreation.gov)",
+                "Driver's license / ID",
+                "Car charger + cables (no outlets in park)",
+                "Cash ($20-40 for tips, small shops)",
+                "Printed itinerary (no cell service for GPS)"
+            ],
+            "CLOTHING (Layer System)": [
+                "Base layer (merino wool or synthetic top)",
+                "Mid layer (fleece or down jacket)",
+                "Shell layer (rain jacket — afternoon storms!)",
+                "Hiking pants / convertible pants",
+                "Warm hat + gloves (for dawn sessions)",
+                "Sun hat / baseball cap",
+                "Hiking boots / trail shoes (broken in!)",
+                "Sandals for evening",
+                "Extra socks (2-3 pairs)"
+            ],
+            "GEAR": [
+                "Bear spray ($50 at park store or rent $12/day at Bear Aware, West Yellowstone)",
+                "Binoculars (10x42 minimum for wildlife)",
+                "Headlamp / flashlight (for dawn departures)",
+                "Daypack / backpack (for trails + snacks)",
+                "Reusable water bottles (2L per person/day)",
+                "Sunscreen SPF 50+ (high altitude UV is intense)",
+                "Sunglasses (polarized)",
+                "Bug spray / DEET (for meadows & Oxbow Bend)",
+                "First aid kit (basics + blister pads)"
+            ],
+            "CAMERA": [
+                "Camera body (charged batteries!)",
+                "Wide angle lens (16-35mm for landscapes)",
+                "Telephoto lens (100-400mm+ for wildlife)",
+                "Tripod (for dawn shots & reflections)",
+                "Extra memory cards (shoot RAW)",
+                "Lens cloth + ziplock bags (for mist at falls)",
+                "Polarizing filter",
+                "Rain cover for camera"
+            ],
+            "FOOD & DRINK": [
+                "Cooler with ice (for car — keeps lunch cold)",
+                "Sandwiches / wraps (pack daily lunches)",
+                "Trail mix / energy bars (lots)",
+                "Fruit (apples, oranges — sturdy)",
+                "Water (fill bottles every morning)",
+                "Coffee thermos (for 6 AM starts)",
+                "Snacks for the car (jerky, crackers, cheese)"
+            ],
+            "DIGITAL (Download Before Trip)": [
+                "NPS Yellowstone App (offline geyser times)",
+                "Offline Google Maps (Yellowstone region)",
+                "Geyser Times app",
+                "This trip planner (saved to home screen!)",
+                "AllTrails offline maps (if hiking)"
+            ]
+        };
+
+        let html = '<p style="font-size:0.73rem;color:var(--text-muted);margin-bottom:16px;">Tap items to check them off. Progress saves automatically.</p>';
+        let itemIdx = 0;
+        for (const [cat, items] of Object.entries(categories)) {
+            html += `<div class="check-category">${cat}</div>`;
+            items.forEach(item => {
+                const checked = getPackCheck('pack_' + itemIdx);
+                html += `<div class="check-item ${checked ? 'checked' : ''}">
+                    <div class="check-box ${checked ? 'checked' : ''}" onclick="togglePackCheck('pack_${itemIdx}');this.classList.toggle('checked');this.parentElement.classList.toggle('checked');"></div>
+                    <div class="check-text">${item}</div>
+                </div>`;
+                itemIdx++;
+            });
+        }
+        return html;
+    }
+
+    // ===== EMERGENCY INFO =====
+    function getEmergencyInfo() {
+        return `
+            <div style="background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.2);border-radius:14px;padding:16px;margin-bottom:16px;">
+                <h3 style="color:var(--accent-red);font-size:0.9rem;margin-bottom:8px;">&#128680; EMERGENCY: 911</h3>
+                <p style="font-size:0.78rem;color:var(--text-secondary);line-height:1.6;">Cell service is limited. 911 calls may route through satellite or park radio. If no service, drive to the nearest ranger station or visitor center.</p>
+            </div>
+
+            <div class="info-card">
+                <h3>&#127973; Ranger Stations & Clinics</h3>
+                <ul>
+                    <li><strong>Mammoth Clinic</strong> (near Mammoth Hot Springs) <span>Open summer</span></li>
+                    <li><strong>Lake Clinic</strong> (Lake Village) <span>Open summer</span></li>
+                    <li><strong>Old Faithful Clinic</strong> (Old Faithful area) <span>Open summer</span></li>
+                    <li><strong>Canyon Ranger Station</strong> <span>Year-round</span></li>
+                    <li><strong>Mammoth Ranger Station</strong> <span>Year-round</span></li>
+                    <li><strong>Grant Village Ranger Station</strong> <span>Seasonal</span></li>
+                </ul>
+                <div class="verify-note">&#9888; Clinic hours are seasonal and limited. For serious emergencies, you may be airlifted to Bozeman or Idaho Falls hospitals. Verify clinic hours at nps.gov/yell closer to trip.</div>
+            </div>
+
+            <div class="info-card">
+                <h3>&#128059; Bear Encounter Protocol</h3>
+                <p><strong>If you see a bear at a distance:</strong></p>
+                <ul>
+                    <li>Stay 100+ yards away <span>Always</span></li>
+                    <li>Do not run <span>Bears chase</span></li>
+                    <li>Make yourself look large <span>Arms up</span></li>
+                    <li>Back away slowly <span>Face the bear</span></li>
+                </ul>
+                <p style="margin-top:10px;"><strong>If a bear charges:</strong></p>
+                <ul>
+                    <li>Stand your ground (often a bluff charge) <span>Don't run</span></li>
+                    <li>Deploy bear spray at 20-30 feet <span>Aim low</span></li>
+                    <li>Spray in short bursts creating a cloud <span>2-3 sec bursts</span></li>
+                </ul>
+                <p style="margin-top:10px;"><strong>If a GRIZZLY makes contact:</strong></p>
+                <ul>
+                    <li>Play dead: face down, hands behind neck <span>Don't move</span></li>
+                    <li>Spread legs to prevent being flipped <span>Stay still</span></li>
+                    <li>Stay down until bear leaves <span>Wait</span></li>
+                </ul>
+                <p style="margin-top:10px;"><strong>If a BLACK BEAR makes contact:</strong></p>
+                <ul>
+                    <li>DO NOT play dead <span>Fight back</span></li>
+                    <li>Hit nose, eyes with rocks/sticks <span>Be aggressive</span></li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>&#128003; Bison Safety</h3>
+                <ul>
+                    <li>Always stay 25+ yards away <span>They're fast (35 mph)</span></li>
+                    <li>If a bison raises its tail <span>It's about to charge — MOVE</span></li>
+                    <li>Never get between a cow and calf <span>Most dangerous scenario</span></li>
+                    <li>If on a trail, give them the right of way <span>Go wide around</span></li>
+                </ul>
+                <p style="margin-top:8px;color:var(--accent-orange);font-size:0.73rem;font-weight:600;">Bison injure more people in Yellowstone than bears do. They look docile but are unpredictable and extremely fast.</p>
+            </div>
+
+            <div class="info-card">
+                <h3>&#127777; Thermal Area Safety</h3>
+                <ul>
+                    <li>STAY on boardwalks at all times <span>Crust is paper-thin</span></li>
+                    <li>Ground temperature can exceed 200°F <span>Instant severe burns</span></li>
+                    <li>Multiple deaths from people leaving boardwalks <span>Strictly enforced</span></li>
+                    <li>Keep children within arm's reach <span>On boardwalks</span></li>
+                    <li>Do NOT throw objects into thermal features <span>Federal crime</span></li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>&#128222; Key Phone Numbers</h3>
+                <p style="font-size:0.73rem;color:var(--text-muted);margin-bottom:8px;">Save these before entering the park (no service to look them up later)</p>
+                <ul>
+                    <li>Yellowstone Emergency Dispatch <span>307-344-7381</span></li>
+                    <li>NPS Non-Emergency <span>307-344-7381</span></li>
+                    <li>Yellowstone General Info <span>307-344-7381</span></li>
+                    <li>Bozeman Health Hospital <span>406-414-5000</span></li>
+                    <li>Eastern Idaho Regional Medical (IF) <span>208-529-6111</span></li>
+                    <li>St. John's Health, Jackson <span>307-733-3636</span></li>
+                    <li>Roadside Assistance (AAA) <span>800-222-4357</span></li>
+                </ul>
+                <div class="verify-note">&#9888; The main Yellowstone number (307-344-7381) handles both emergency and non-emergency. Verify these numbers are still current before your trip.</div>
+            </div>
+
+            <div class="info-card">
+                <h3>&#128663; Car Trouble</h3>
+                <ul>
+                    <li>Flat tire / breakdown in park <span>Call 307-344-7381</span></li>
+                    <li>Nearest full-service mechanic <span>West Yellowstone or Gardiner</span></li>
+                    <li>Towing from inside park <span>Very expensive ($500+)</span></li>
+                    <li>Cell service for calling <span>Best at Canyon, Mammoth, Lake</span></li>
+                </ul>
+                <p style="margin-top:8px;font-size:0.73rem;color:var(--text-secondary);">If no cell service: flag down a passing car and ask them to report to the nearest ranger station. Rangers patrol regularly.</p>
+            </div>
+        `;
+    }
+
+    // ===== WEATHER PANEL =====
+    function getWeatherPanel() {
+        return `
+            <div class="weather-card">
+                <h4>&#9728; Typical Late May / June Weather — Yellowstone</h4>
+                <div class="weather-grid">
+                    <div class="weather-day">
+                        <div class="wd-label">MORNING</div>
+                        <div class="wd-icon">&#127780;</div>
+                        <div class="wd-temp">30-45°F</div>
+                        <p style="font-size:0.6rem;color:var(--text-muted);">Cold! Layers needed</p>
+                    </div>
+                    <div class="weather-day">
+                        <div class="wd-label">MIDDAY</div>
+                        <div class="wd-icon">&#9728;</div>
+                        <div class="wd-temp">60-75°F</div>
+                        <p style="font-size:0.6rem;color:var(--text-muted);">Warm, sunny</p>
+                    </div>
+                    <div class="weather-day">
+                        <div class="wd-label">EVENING</div>
+                        <div class="wd-icon">&#9928;</div>
+                        <div class="wd-temp">40-55°F</div>
+                        <p style="font-size:0.6rem;color:var(--text-muted);">Possible storms</p>
+                    </div>
+                </div>
+                <div class="sun-times">
+                    <div class="sun-time">
+                        <div class="st-icon">&#127749;</div>
+                        <div class="st-label">SUNRISE</div>
+                        <div class="st-value">~5:45 AM</div>
+                    </div>
+                    <div class="sun-time">
+                        <div class="st-icon">&#127751;</div>
+                        <div class="st-label">SUNSET</div>
+                        <div class="st-value">~9:05 PM</div>
+                    </div>
+                    <div class="sun-time">
+                        <div class="st-icon">&#127775;</div>
+                        <div class="st-label">GOLDEN HR</div>
+                        <div class="st-value">7:30-9 PM</div>
+                    </div>
+                </div>
+                <div class="verify-note" style="margin-top:12px;">&#9888; These are typical ranges for late May/early June at 7,000-8,000 ft elevation. Check weather.gov for Yellowstone NP 3-5 days before your trip for actual forecast. Snow is possible into June at higher elevations!</div>
+            </div>
+
+            <div class="info-card">
+                <h3>&#127780; Weather Strategy by Day</h3>
+                <ul>
+                    <li><strong>Day 1 (Upper Loop):</strong> Leave in cold (35°F), warm by afternoon. Lamar Valley at sunset = cooling fast, bring jacket. <span>Layers critical</span></li>
+                    <li><strong>Day 2 (Tetons):</strong> Dawn at Oxbow Bend will be COLD (30-35°F). Warm by Jenny Lake. Afternoon thunderstorms possible near peaks. <span>Off peaks by 2 PM</span></li>
+                    <li><strong>Day 3 (Geysers):</strong> Thermal areas feel warmer (ground heat). But morning mist from springs + cool air = need layers. <span>Steam obscures photos on cold mornings</span></li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>&#127777; Daylight Hours & Photography Windows</h3>
+                <p style="margin-bottom:8px;">In late May/June, Yellowstone gets ~15+ hours of daylight. This is a HUGE advantage for photography and wildlife.</p>
+                <ul>
+                    <li>Blue hour <span>5:00-5:40 AM</span></li>
+                    <li>Golden hour (AM) <span>5:40-7:00 AM</span></li>
+                    <li>Harsh midday light <span>10 AM - 5 PM</span></li>
+                    <li>Golden hour (PM) <span>7:30-9:05 PM</span></li>
+                    <li>Blue hour (PM) <span>9:05-9:45 PM</span></li>
+                </ul>
+                <p style="margin-top:8px;color:var(--accent-orange);font-size:0.73rem;">Best wildlife viewing: 5-8 AM and 6-9 PM. Best geyser colors: 9-11 AM (warm enough for clear steam, low enough angle for rainbow in mist).</p>
+            </div>
+
+            <div class="info-card">
+                <h3>&#9201; Day Timing Estimator</h3>
+                <p style="margin-bottom:8px;font-size:0.73rem;color:var(--text-muted);">If you leave your hotel at 6:00 AM each day, here's roughly when you'll hit each stop:</p>
+                ${getDayTimingEstimate()}
+            </div>
+
+            <div class="info-card">
+                <h3>&#9888; Weather Red Flags</h3>
+                <ul>
+                    <li>Dark clouds building over peaks by early afternoon <span>Thunderstorm incoming</span></li>
+                    <li>Lightning visible <span>Get below treeline IMMEDIATELY</span></li>
+                    <li>Sudden temperature drop (10°F+) <span>Storm front arriving</span></li>
+                    <li>Wind picking up at Oxbow Bend / lakes <span>No reflections + cold</span></li>
+                    <li>Snow forecast (possible into June at elevation) <span>Carry chains? Check roads</span></li>
+                </ul>
+            </div>
+        `;
+    }
+
+    function getDayTimingEstimate() {
+        const data = getPlanData();
+        // Rough time estimates based on drive times + activity durations
+        const dayEstimates = [
+            { label: "Day 1 (Leave Bozeman 6:00 AM)", stops: [
+                { name: "Arrive Mammoth Hot Springs", time: "~7:45 AM" },
+                { name: "Depart Mammoth", time: "~9:15 AM" },
+                { name: "Arrive Norris Geyser", time: "~9:50 AM" },
+                { name: "Depart Norris", time: "~11:00 AM" },
+                { name: "Arrive Canyon/Artist Point", time: "~11:30 AM" },
+                { name: "Depart Canyon Area", time: "~1:00 PM" },
+                { name: "Through Hayden + Mud Volcano", time: "~1:15-2:15 PM" },
+                { name: "Arrive Tower Fall", time: "~3:00 PM" },
+                { name: "Arrive Lamar Valley", time: "~4:00 PM" },
+                { name: "Sunset at Lamar", time: "~8:30-9:00 PM" },
+                { name: "Arrive Island Park", time: "~11:30 PM" }
+            ]},
+            { label: "Day 2 (Leave Island Park 5:30 AM)", stops: [
+                { name: "Arrive Oxbow Bend", time: "~7:45 AM" },
+                { name: "Arrive Jackson Lake", time: "~8:30 AM" },
+                { name: "Arrive Snake River Overlook", time: "~9:45 AM" },
+                { name: "Arrive Jenny Lake", time: "~10:15 AM" },
+                { name: "Depart Jenny Lake", time: "~12:15 PM" },
+                { name: "Lunch at Dornan's", time: "~12:30-1:30 PM" },
+                { name: "Arrive Mormon Row", time: "~7:30 PM (for sunset)" },
+                { name: "Sunset", time: "~9:00 PM" },
+                { name: "Dinner in Jackson", time: "~9:30 PM" },
+                { name: "Arrive Island Park", time: "~12:00 AM" }
+            ]},
+            { label: "Day 3 (Leave Island Park 6:30 AM)", stops: [
+                { name: "Arrive Firehole Lake Dr / first stop", time: "~7:15 AM" },
+                { name: "Arrive Grand Prismatic", time: "~8:00 AM" },
+                { name: "Depart (with overlook hike)", time: "~9:15 AM" },
+                { name: "Arrive Old Faithful", time: "~9:30 AM" },
+                { name: "Depart Old Faithful area", time: "~11:30 AM" },
+                { name: "Biscuit + Black Sand Basins", time: "~11:45 AM-12:30 PM" },
+                { name: "Arrive West Thumb", time: "~1:15 PM" },
+                { name: "Depart for Bozeman", time: "~2:00 PM" },
+                { name: "Arrive Bozeman Airport", time: "~6:00 PM" }
+            ]}
+        ];
+
+        let html = '';
+        dayEstimates.forEach(day => {
+            html += `<div class="time-est"><h4>${day.label}</h4>`;
+            day.stops.forEach(s => {
+                html += `<div class="time-est-row"><span class="te-stop">${s.name}</span><span class="te-time">${s.time}</span></div>`;
+            });
+            html += `</div>`;
+        });
+        return html;
+    }
+
+    // ===== PACKING CHECK STATE =====
+    function getPackCheck(key) {
+        try { return JSON.parse(localStorage.getItem('ys_packing') || '{}')[key] || false; } catch { return false; }
+    }
+    function togglePackCheck(key) {
+        const state = JSON.parse(localStorage.getItem('ys_packing') || '{}');
+        state[key] = !state[key];
+        localStorage.setItem('ys_packing', JSON.stringify(state));
+    }
+
+    // ===== ADD NOTES TO DETAIL VIEW =====
+    const origOpenDetail = openDetail;
+    openDetail = function(dayIdx, stopIdx) {
+        origOpenDetail(dayIdx, stopIdx);
+        // Append notes textarea to detail body
+        const body = document.getElementById('detailBody');
+        const existingNote = getNote(currentPlan, dayIdx, stopIdx);
+        body.innerHTML += `
+            <div class="note-label">&#128221; Your Notes</div>
+            <textarea class="note-area" placeholder="Jot down observations, sightings, timestamps..." oninput="saveNote('${currentPlan}',${dayIdx},${stopIdx},this.value)">${existingNote}</textarea>
+        `;
+    };
+
+    // ===== OFFLINE MAP CACHE =====
+    let cacheAborted = false;
+
+    async function startOfflineCache() {
+        if (!navigator.onLine) {
+            alert('You need WiFi to download map tiles. Connect to WiFi first.');
+            return;
+        }
+
+        cacheAborted = false;
+        const overlay = document.getElementById('cacheOverlay');
+        overlay.style.display = 'flex';
+
+        // Yellowstone + Grand Teton bounding box
+        // Lat: 43.5 to 45.1, Lng: -111.5 to -109.8
+        const bounds = { south: 43.5, north: 45.2, west: -111.5, east: -109.8 };
+
+        // Zoom levels to cache: 8 (overview) through 13 (detailed stops)
+        const zoomLevels = [8, 9, 10, 11, 12, 13];
+
+        // Calculate all tile coordinates
+        const tiles = [];
+        for (const z of zoomLevels) {
+            const minTileX = lng2tile(bounds.west, z);
+            const maxTileX = lng2tile(bounds.east, z);
+            const minTileY = lat2tile(bounds.north, z);
+            const maxTileY = lat2tile(bounds.south, z);
+            for (let x = minTileX; x <= maxTileX; x++) {
+                for (let y = minTileY; y <= maxTileY; y++) {
+                    tiles.push({ z, x, y });
+                }
+            }
+        }
+
+        const total = tiles.length;
+        let loaded = 0;
+        let failed = 0;
+
+        document.getElementById('cacheStatus').textContent = `0 / ${total} tiles (zoom levels 8-13)`;
+        document.getElementById('cacheProgress').style.width = '0%';
+
+        // Process in batches of 8 concurrent requests
+        const batchSize = 8;
+        for (let i = 0; i < tiles.length; i += batchSize) {
+            if (cacheAborted) break;
+
+            const batch = tiles.slice(i, i + batchSize);
+            const promises = batch.map(t => {
+                const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${t.z}/${t.y}/${t.x}`;
+                return fetch(url).then(r => {
+                    if (r.ok) loaded++;
+                    else failed++;
+                }).catch(() => { failed++; });
+            });
+
+            await Promise.all(promises);
+
+            const pct = Math.round(((loaded + failed) / total) * 100);
+            document.getElementById('cacheProgress').style.width = pct + '%';
+            document.getElementById('cacheStatus').textContent = `${loaded} / ${total} tiles cached (${failed} failed)`;
+        }
+
+        if (!cacheAborted) {
+            // Also cache the labels layer
+            document.getElementById('cacheStatus').textContent = 'Caching label tiles...';
+            const labelTiles = [];
+            for (const z of [8, 9, 10, 11, 12]) {
+                const minTileX = lng2tile(bounds.west, z);
+                const maxTileX = lng2tile(bounds.east, z);
+                const minTileY = lat2tile(bounds.north, z);
+                const maxTileY = lat2tile(bounds.south, z);
+                for (let x = minTileX; x <= maxTileX; x++) {
+                    for (let y = minTileY; y <= maxTileY; y++) {
+                        labelTiles.push({ z, x, y });
+                    }
+                }
+            }
+
+            for (let i = 0; i < labelTiles.length; i += batchSize) {
+                if (cacheAborted) break;
+                const batch = labelTiles.slice(i, i + batchSize);
+                const sub = ['a', 'b', 'c', 'd'];
+                await Promise.all(batch.map(t => {
+                    const s = sub[Math.floor(Math.random() * sub.length)];
+                    const url = `https://${s}.basemaps.cartocdn.com/dark_only_labels/${t.z}/${t.x}/${t.y}.png`;
+                    return fetch(url).catch(() => {});
+                }));
+            }
+
+            // Done!
+            document.getElementById('cacheIcon').textContent = '\\u2705';
+            document.getElementById('cacheTitle').textContent = 'Map Cached for Offline!';
+            document.getElementById('cacheDesc').textContent = `${loaded} satellite tiles + labels cached. You can now use the map in the park without internet. Zoom levels 8-13 are available.`;
+            document.getElementById('cacheProgress').style.width = '100%';
+            document.getElementById('cacheStatus').textContent = 'Ready for offline use';
+            document.getElementById('cacheCancelBtn').textContent = 'Done';
+            document.getElementById('cacheCancelBtn').onclick = () => { overlay.style.display = 'none'; };
+        }
+    }
+
+    function cancelCache() {
+        cacheAborted = true;
+        document.getElementById('cacheOverlay').style.display = 'none';
+    }
+
+    // Tile coordinate math
+    function lng2tile(lng, zoom) { return Math.floor((lng + 180) / 360 * Math.pow(2, zoom)); }
+    function lat2tile(lat, zoom) {
+        return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
+    }
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').then(r => console.log('SW registered:', r.scope)).catch(e => console.log('SW failed:', e));
+    }
+
+    // Offline banner
+    const offBanner = document.createElement('div');
+    offBanner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(244,162,97,0.95);color:#1a1a2e;padding:8px 16px;border-radius:20px;font-size:0.75rem;font-weight:600;z-index:9999;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+    offBanner.textContent = 'Offline — using cached data';
+    document.body.appendChild(offBanner);
+    window.addEventListener('online', () => { offBanner.style.display = 'none'; });
+    window.addEventListener('offline', () => { offBanner.style.display = 'block'; });
+    if (!navigator.onLine) offBanner.style.display = 'block';
+    </script>
+</body>
+</html>

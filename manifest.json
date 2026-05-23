@@ -1,0 +1,18 @@
+{
+  "name": "Yellowstone Trip Planner",
+  "short_name": "YS Trip",
+  "description": "Interactive 3-day Yellowstone & Grand Teton trip planner with maps",
+  "start_url": "yellowstone_trip_map.html",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#0f0f1a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%230f0f1a' width='512' height='512' rx='100'/><text y='340' x='256' text-anchor='middle' font-size='260'>🦬</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
